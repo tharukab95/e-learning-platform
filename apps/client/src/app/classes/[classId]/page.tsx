@@ -497,10 +497,27 @@ export default function ClassDetailsPage() {
       {/* Header NavBar */}
       <header className="w-full bg-gradient-to-r from-blue-600 to-indigo-700 shadow-md py-4 px-8 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <span className="text-2xl font-bold text-white tracking-tight">
-            E-Learn
-          </span>
-          <span className="ml-4 text-lg text-indigo-100 font-medium">
+          <button
+            className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-full transition font-medium"
+            onClick={() => router.push('/dashboard/student')}
+          >
+            {/* Back arrow icon */}
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M15.75 19.5L8.25 12l7.5-7.5"
+              />
+            </svg>
+            Back
+          </button>
+          <span className="text-2xl font-bold text-white tracking-tight ml-4">
             Class Lessons
           </span>
         </div>
@@ -523,9 +540,6 @@ export default function ClassDetailsPage() {
               {completionPercent}%)
             </div>
           )}
-          <button className="btn btn-ghost mb-4" onClick={() => router.back()}>
-            &larr; Back
-          </button>
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-3xl font-bold text-indigo-800">
               Class Lessons
