@@ -104,18 +104,16 @@ export default function StudentDashboard() {
         {/* Enrolled Classes */}
         <div>
           <h2 className="text-2xl font-bold mb-4">Enrolled Classes</h2>
-          <div className="space-y-4">
-            {Array.isArray(enrolledClasses) && enrolledClasses.length === 0 ? (
-              <div className="text-gray-500">No enrolled classes.</div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {Array.isArray(enrolledClasses) &&
-                  enrolledClasses.map((c) => (
-                    <ClassCard key={c.id} classInfo={c} />
-                  ))}
-              </div>
-            )}
-          </div>
+          {Array.isArray(enrolledClasses) && enrolledClasses.length === 0 ? (
+            <div className="text-gray-500">No enrolled classes.</div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {Array.isArray(enrolledClasses) &&
+                enrolledClasses.map((c) => (
+                  <ClassCard key={c.id} classInfo={c} />
+                ))}
+            </div>
+          )}
           <button className="btn btn-secondary mt-4" onClick={openEnrollModal}>
             Enroll in a New Class
           </button>
@@ -134,7 +132,7 @@ export default function StudentDashboard() {
       {/* Modal for enrolling in a class */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-lg p-8 max-w-lg w-full relative">
+          <div className="bg-white rounded-lg shadow-lg p-8 max-w-2xl w-full relative">
             <button
               className="absolute top-2 right-2 text-gray-500 hover:text-gray-800"
               onClick={() => setShowModal(false)}

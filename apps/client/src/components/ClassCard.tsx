@@ -15,18 +15,18 @@ interface ClassCardProps {
 
 const ClassCard: React.FC<ClassCardProps> = ({ classInfo, onEnroll }) => {
   return (
-    <div className="card w-40 bg-white shadow-lg border border-gray-200 rounded-xl overflow-hidden hover:shadow-xl hover:border-primary transition-all">
+    <div className="w-[200px] bg-white shadow-lg border border-gray-200 rounded-xl overflow-hidden hover:shadow-xl hover:border-primary transition-all flex flex-col">
       {classInfo.thumbnail && (
-        <div className="w-full aspect-[9/16] bg-base-200 flex items-center justify-center p-0 m-0">
+        <div className="w-full h-[270px] bg-base-200 flex items-center justify-center">
           <img
             src={classInfo.thumbnail}
             alt={classInfo.title}
-            className="object-contain w-full h-full p-0 m-0"
+            className="object-cover w-full h-[270px] p-0 m-0"
             style={{ display: 'block' }}
           />
         </div>
       )}
-      <div className="card-body p-3">
+      <div className="card-body p-3 flex flex-col justify-between flex-1 min-h-[90px]">
         <h2 className="card-title text-base font-semibold line-clamp-1 mb-0.5">
           {classInfo.title}
         </h2>
@@ -37,7 +37,7 @@ const ClassCard: React.FC<ClassCardProps> = ({ classInfo, onEnroll }) => {
           <div className="card-actions justify-end mt-2">
             <button
               onClick={() => onEnroll(classInfo.id)}
-              className="btn btn-xs btn-primary rounded-full px-4 font-bold shadow-md hover:scale-105 transition-transform"
+              className="px-4 py-1 text-sm font-bold rounded-full shadow-md bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700 active:scale-95 transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-blue-300"
             >
               Enroll Now
             </button>

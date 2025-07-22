@@ -11,6 +11,7 @@ import { useMutation } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { useSession } from 'next-auth/react';
 import ClassCard from '@/components/ClassCard';
+import CreateClassModal from './CreateClassModal';
 
 interface CreateClassFormValues {
   title: string;
@@ -48,6 +49,7 @@ const mockNotifications = [
 
 export default function TeacherDashboard() {
   const [showModal, setShowModal] = useState(false);
+  const [isPending, setIsPending] = useState(false);
   const {
     register,
     handleSubmit,
@@ -126,14 +128,8 @@ export default function TeacherDashboard() {
     }
   };
 
-  const onSubmit = async (data: CreateClassFormValues) => {
-    const formData = new FormData();
-    formData.append('title', data.title);
-    formData.append('subject', data.subject);
-    formData.append('description', data.description || '');
-    if (thumbnailFile) {
-      formData.append('thumbnail', thumbnailFile);
-    }
+  const onSubmit = async (formData: FormData) => {
+    setIsPending(true);
     const token = (session?.user as any)?.access_token;
     const res = await fetch(
       `${
@@ -159,10 +155,8 @@ export default function TeacherDashboard() {
         setCreatedClasses(Array.isArray(allClasses) ? allClasses : []);
       }
       setShowModal(false);
-      reset();
-      setPreview(null);
-      setThumbnailFile(null);
     }
+    setIsPending(false);
   };
 
   // Calculate total enrolled students
@@ -206,140 +200,12 @@ export default function TeacherDashboard() {
       </div>
 
       {/* Create Class Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-lg p-8 max-w-2xl w-full relative">
-            <button
-              className="absolute top-2 right-2 text-gray-500 hover:text-gray-800"
-              onClick={() => setShowModal(false)}
-            >
-              &times;
-            </button>
-            <h1 className="text-3xl font-bold mb-6 text-center">
-              Create New Class
-            </h1>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-              <div className="flex flex-col md:flex-row gap-6">
-                <div className="flex-1 space-y-4">
-                  <div>
-                    <label
-                      htmlFor="title"
-                      className="block text-sm font-medium"
-                    >
-                      Title
-                    </label>
-                    <input
-                      id="title"
-                      {...register('title', { required: 'Title is required' })}
-                      className="input input-bordered w-full mt-1 border-2 border-gray-300 bg-gray-50 focus:border-primary focus:bg-white focus:outline-none"
-                    />
-                    {errors.title && (
-                      <p className="text-red-500 text-xs mt-1">
-                        {errors.title.message}
-                      </p>
-                    )}
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="subject"
-                      className="block text-sm font-medium"
-                    >
-                      Subject
-                    </label>
-                    <input
-                      id="subject"
-                      {...register('subject', {
-                        required: 'Subject is required',
-                      })}
-                      className="input input-bordered w-full mt-1 border-2 border-gray-300 bg-gray-50 focus:border-primary focus:bg-white focus:outline-none"
-                    />
-                    {errors.subject && (
-                      <p className="text-red-500 text-xs mt-1">
-                        {errors.subject.message}
-                      </p>
-                    )}
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="description"
-                      className="block text-sm font-medium"
-                    >
-                      Description
-                    </label>
-                    <textarea
-                      id="description"
-                      {...register('description')}
-                      className="textarea textarea-bordered w-full mt-1 border-2 border-gray-300 bg-gray-50 focus:border-primary focus:bg-white focus:outline-none"
-                      rows={4}
-                    />
-                  </div>
-                </div>
-                <div className="flex flex-col items-center gap-2">
-                  <label className="block text-sm font-medium mb-1">
-                    Thumbnail
-                  </label>
-                  <div
-                    className="w-28 h-48 bg-base-300 rounded-lg flex items-center justify-center cursor-pointer border border-dashed border-gray-300 hover:border-primary relative aspect-[9/16]"
-                    onClick={() => !preview && fileInputRef.current?.click()}
-                  >
-                    {preview ? (
-                      <>
-                        <img
-                          src={preview}
-                          alt="Thumbnail Preview"
-                          className="object-contain w-full h-full rounded-lg"
-                        />
-                        <button
-                          type="button"
-                          className="absolute top-1 right-1 bg-white bg-opacity-80 rounded-full p-1 hover:bg-red-200"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setPreview(null);
-                            setThumbnailFile(null);
-                            if (fileInputRef.current)
-                              fileInputRef.current.value = '';
-                          }}
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            strokeWidth={1.5}
-                            stroke="currentColor"
-                            className="w-5 h-5 text-red-500"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              d="M6 18L18 6M6 6l12 12"
-                            />
-                          </svg>
-                        </button>
-                      </>
-                    ) : (
-                      <span className="text-gray-400">Click to upload</span>
-                    )}
-                  </div>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    ref={fileInputRef}
-                    onChange={onThumbnailChange}
-                    className="hidden"
-                  />
-                </div>
-              </div>
-              <button
-                type="submit"
-                className="btn btn-primary w-full"
-                disabled={mutation.isPending}
-              >
-                {mutation.isPending ? 'Creating...' : 'Create Class'}
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
+      <CreateClassModal
+        open={showModal}
+        onClose={() => setShowModal(false)}
+        onSubmit={onSubmit}
+        isPending={isPending}
+      />
 
       {/* Show all created classes with nice card UI */}
       {createdClasses.length > 0 && (
@@ -349,8 +215,10 @@ export default function TeacherDashboard() {
             {createdClasses.map((c) => (
               <div key={c.id} className="relative">
                 <ClassCard classInfo={c} />
-                <div className="absolute top-2 left-2 bg-primary text-white text-xs font-semibold rounded-full px-2 py-0.5 shadow">
-                  {enrollmentCounts[c.id] ?? 0} students
+                <div className="absolute top-2 left-2 bg-teal-700 text-white text-xs rounded-full px-2 py-0.5 shadow">
+                  {enrollmentCounts[c.id] === 1
+                    ? '1 student'
+                    : `${enrollmentCounts[c.id] ?? 0} students`}
                 </div>
               </div>
             ))}
