@@ -24,30 +24,31 @@ const ClassCard: React.FC<ClassCardProps> = ({
   return (
     <div
       className={
-        'w-[200px] bg-white shadow-lg border border-gray-200 rounded-xl overflow-hidden hover:shadow-xl hover:border-primary transition-all flex flex-col' +
+        'w-full bg-white shadow-lg border border-gray-200 rounded-xl overflow-hidden hover:shadow-xl hover:border-primary transition-all flex flex-col' +
         (onClick ? ' cursor-pointer' : '')
       }
       onClick={onClick ? () => onClick(classInfo.id) : undefined}
     >
-      {classInfo.thumbnail && (
-        <div className="w-full h-[270px] bg-base-200 flex items-center justify-center">
-          <img
-            src={classInfo.thumbnail}
-            alt={classInfo.title}
-            className="object-cover w-full h-[270px] p-0 m-0"
-            style={{ display: 'block' }}
-          />
-        </div>
+      {/* Card image as top section, flush with card edges */}
+      {classInfo.thumbnail ? (
+        <img
+          src={classInfo.thumbnail}
+          alt={classInfo.title}
+          className="object-cover w-full h-[260px] rounded-t-xl"
+          style={{ display: 'block' }}
+        />
+      ) : (
+        <div className="w-full h-40 bg-base-200 flex items-center justify-center rounded-t-xl" />
       )}
-      <div className="card-body p-3 flex flex-col justify-between flex-1 min-h-[90px]">
-        <h2 className="card-title text-base font-semibold line-clamp-1 mb-0.5">
+      <div className="p-4 flex flex-col justify-between flex-1 min-h-[90px]">
+        <h2 className="text-base font-semibold line-clamp-1 mb-0.5">
           {classInfo.title}
         </h2>
         <p className="text-xs text-gray-500 line-clamp-1 mb-1">
           {classInfo.subject}
         </p>
         {onEnroll && !enrolled && (
-          <div className="card-actions justify-end mt-2">
+          <div className="flex justify-end mt-2">
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -60,7 +61,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
           </div>
         )}
         {enrolled && (
-          <div className="card-actions justify-end mt-2">
+          <div className="flex justify-end mt-2">
             <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-semibold">
               Enrolled
             </span>
