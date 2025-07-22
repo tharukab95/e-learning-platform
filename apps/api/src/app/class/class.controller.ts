@@ -11,14 +11,16 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ClassService } from './class.service';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { LessonService } from '../lesson/lesson.service';
 import { Roles } from '../auth/roles.decorator';
 
 @Controller('classes')
 export class ClassController {
-  constructor(private classService: ClassService) {}
+  constructor(
+    private classService: ClassService,
+    private lessonService: LessonService
+  ) {}
 
-  @UseGuards(JwtAuthGuard)
   @Roles('teacher')
   @Post()
   @UseInterceptors(FileInterceptor('thumbnail'))
@@ -31,15 +33,18 @@ export class ClassController {
     return this.classService.createClass(title, subject, req.user.id, file);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Get()
   async listClasses() {
     return this.classService.listClasses();
   }
 
-  @UseGuards(JwtAuthGuard)
   @Get('enrolled')
   async getEnrolledClasses(@Req() req: any) {
     return this.classService.getEnrolledClasses(req.user.id);
+  }
+
+  @Get(':id/lessons')
+  async getClassLessons(@Param('id') id: string) {
+    return this.lessonService.listLessonsByClass(id);
   }
 }

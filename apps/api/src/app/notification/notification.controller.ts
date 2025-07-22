@@ -8,14 +8,13 @@ import {
   Patch,
   Param,
 } from '@nestjs/common';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PrismaService } from '../prisma/prisma.service';
+import { Public } from '../auth/public.decorator';
 
 @Controller('notifications')
 export class NotificationController {
   constructor(private prisma: PrismaService) {}
 
-  @UseGuards(JwtAuthGuard)
   @Get()
   async getNotifications(@Req() req: any) {
     return this.prisma.notification.findMany({
@@ -25,6 +24,7 @@ export class NotificationController {
   }
 
   // Called by backend when a new assessment is created
+  @Public()
   @Post('create')
   async createNotification(
     @Body() body: { userId: string; message: string; link?: string }
@@ -39,7 +39,6 @@ export class NotificationController {
     });
   }
 
-  @UseGuards(JwtAuthGuard)
   @Patch(':id/read')
   async markAsRead(@Param('id') id: string, @Req() req: any) {
     return this.prisma.notification.update({

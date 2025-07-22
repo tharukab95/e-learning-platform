@@ -12,14 +12,12 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AssessmentService } from './assessment.service';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../auth/roles.decorator';
 
 @Controller()
 export class AssessmentController {
   constructor(private assessmentService: AssessmentService) {}
 
-  @UseGuards(JwtAuthGuard)
   @Roles('teacher')
   @Post('assessments')
   @UseInterceptors(FileInterceptor('pdf'))
@@ -37,13 +35,11 @@ export class AssessmentController {
     );
   }
 
-  @UseGuards(JwtAuthGuard)
-  @Get('lessons/:lessonId/assessments')
-  async listAssessments(@Param('lessonId') lessonId: string) {
-    return this.assessmentService.listAssessmentsByLesson(lessonId);
+  @Get('assessments/:id/submissions')
+  async getAssessmentSubmissions(@Param('id') id: string) {
+    return this.assessmentService.getAssessmentSubmissions(id);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Post('assessments/:assessmentId/submit')
   @UseInterceptors(FileInterceptor('pdf'))
   async submitAssessment(
@@ -58,14 +54,6 @@ export class AssessmentController {
     );
   }
 
-  @UseGuards(JwtAuthGuard)
-  @Roles('teacher')
-  @Get('assessments/:assessmentId/submissions')
-  async getAssessmentSubmissions(@Param('assessmentId') assessmentId: string) {
-    return this.assessmentService.getAssessmentSubmissions(assessmentId);
-  }
-
-  @UseGuards(JwtAuthGuard)
   @Roles('teacher')
   @Patch('assessments/submissions/:submissionId')
   async markSubmission(

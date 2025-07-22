@@ -9,7 +9,6 @@ import {
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PrismaService } from '../prisma/prisma.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 
@@ -17,13 +16,11 @@ import { FileInterceptor } from '@nestjs/platform-express';
 export class UserController {
   constructor(private prisma: PrismaService) {}
 
-  @UseGuards(JwtAuthGuard)
   @Get('me')
   async getMe(@Req() req: any) {
     return this.prisma.user.findUnique({ where: { id: req.user?.id } });
   }
 
-  @UseGuards(JwtAuthGuard)
   @Patch('me')
   async updateMe(@Req() req: any, @Body() body: any) {
     // Only allow updating name, phone, address, about
@@ -34,7 +31,6 @@ export class UserController {
     });
   }
 
-  @UseGuards(JwtAuthGuard)
   @Post('me/image')
   @UseInterceptors(FileInterceptor('image'))
   async uploadImage(@Req() req: any, @UploadedFile() file: any) {
