@@ -41,7 +41,6 @@ export default function LessonPlanPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [refresh, setRefresh] = useState(0);
-  const token = (session?.user as any)?.access_token;
   const isTeacher = session?.user?.role === 'teacher';
   const [expandedLesson, setExpandedLesson] = useState<string | null>(null);
   const [lessonDetails, setLessonDetails] = useState<
@@ -71,18 +70,18 @@ export default function LessonPlanPage() {
   const [isGrading, setIsGrading] = useState(false);
 
   useEffect(() => {
-    if (!classId || !token) return;
+    if (!classId) return;
     setLoading(true);
     api
       .get(`/classes/${classId}/lessons`)
       .then((res) => setLessons(Array.isArray(res.data) ? res.data : []))
       .catch(() => setLessons([]))
       .finally(() => setLoading(false));
-  }, [classId, token, showModal, refresh]);
+  }, [classId, showModal, refresh]);
 
   // Fetch assessments and videos for each lesson
   useEffect(() => {
-    if (!lessons.length || !token) return;
+    if (!lessons.length) return;
     const fetchDetails = async () => {
       const details: Record<
         string,
@@ -102,7 +101,7 @@ export default function LessonPlanPage() {
       setLessonDetails(details);
     };
     fetchDetails();
-  }, [lessons, token]);
+  }, [lessons]);
 
   // When opening the modal for edit, prefill name/description
   useEffect(() => {
@@ -118,7 +117,6 @@ export default function LessonPlanPage() {
   useEffect(() => {
     if (markAssessmentId && isTeacher) {
       const fetchSubmissions = async () => {
-        const token = (session?.user as any)?.access_token;
         const res = await api.get(
           `/assessments/${markAssessmentId}/submissions`
         );
@@ -131,7 +129,7 @@ export default function LessonPlanPage() {
       };
       fetchSubmissions();
     }
-  }, [markAssessmentId, isTeacher, session?.user]);
+  }, [markAssessmentId, isTeacher]);
 
   // Handle grading input
   const handleGradingInput = (
@@ -151,7 +149,6 @@ export default function LessonPlanPage() {
     setGradingError('');
     try {
       const { grade, feedback } = grading[submissionId] || {};
-      const token = (session?.user as any)?.access_token;
       const res = await api.patch(`/assessments/submissions/${submissionId}`, {
         grade: Number(grade),
         feedback,
@@ -196,10 +193,6 @@ export default function LessonPlanPage() {
     }
   };
 
-  const handleAddContent = (lessonId: string) => {
-    router.push(`/classes/${classId}/lessons/${lessonId}/upload`);
-  };
-
   // Upload content mutation
   const uploadContent = async (data: any) => {
     if (!contentModalLesson) return;
@@ -214,7 +207,6 @@ export default function LessonPlanPage() {
     register: contentRegister,
     handleSubmit: handleContentSubmit,
     reset: resetContentForm,
-    formState: { errors: contentErrors },
   } = useForm();
   const contentMutation = useMutation({
     mutationFn: uploadContent,

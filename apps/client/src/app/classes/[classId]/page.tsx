@@ -4,7 +4,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useParams } from 'next/navigation';
 import { useRouter } from 'next/navigation';
-import { useState as useToggleState } from 'react';
+
 import Skeleton from 'react-loading-skeleton';
 import 'react-loading-skeleton/dist/skeleton.css';
 import { useSearchParams } from 'next/navigation';

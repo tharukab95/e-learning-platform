@@ -1,7 +1,6 @@
 'use client';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { useState, useEffect } from 'react';
 import { SessionProvider, useSession } from 'next-auth/react';
 
@@ -21,10 +20,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider>
       <SessionSyncer />
-      <QueryClientProvider client={queryClient}>
-        {children}
-        <ReactQueryDevtools initialIsOpen={false} />
-      </QueryClientProvider>
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     </SessionProvider>
   );
 }

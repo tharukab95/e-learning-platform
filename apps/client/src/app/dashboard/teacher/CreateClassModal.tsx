@@ -26,7 +26,6 @@ const CreateClassModal: React.FC<CreateClassModalProps> = ({
     handleSubmit,
     formState: { errors },
     reset,
-    watch,
   } = useForm<CreateClassFormValues>();
   const [preview, setPreview] = useState<string | null>(null);
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
