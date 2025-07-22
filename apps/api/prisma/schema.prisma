@@ -16,6 +16,10 @@ model User {
   password String
   name     String
   role     Role
+  phone    String?
+  address  String?
+  image    String?
+  about    String?
   classes  Class[]  @relation("TeacherClasses")
   enrollments ClassEnrollment[]
   progress Progress[]

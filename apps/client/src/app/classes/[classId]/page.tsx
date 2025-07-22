@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { useState as useToggleState } from 'react';
 import Skeleton from 'react-loading-skeleton';
 import 'react-loading-skeleton/dist/skeleton.css';
+import { useSearchParams } from 'next/navigation';
 
 interface Lesson {
   id: string;
@@ -92,6 +93,50 @@ export default function ClassDetailsPage() {
 
   const isTeacher = session?.user?.role === 'teacher';
   const token = (session?.user as any)?.access_token;
+  const searchParams = useSearchParams();
+  const highlightAssessment = searchParams.get('highlightAssessment');
+  const highlightLessonId = React.useMemo(() => {
+    if (!highlightAssessment) return null;
+    for (const lesson of lessons) {
+      const details = lessonDetails[lesson.id];
+      if (
+        details &&
+        details.assessments.some((a: any) => a.id === highlightAssessment)
+      ) {
+        return lesson.id;
+      }
+    }
+    return null;
+  }, [highlightAssessment, lessons, lessonDetails]);
+
+  const allLessonDetailsLoaded =
+    lessons.length > 0 && lessons.every((lesson) => lessonDetails[lesson.id]);
+
+  React.useEffect(() => {
+    console.log('highlightAssessment:', highlightAssessment);
+    console.log('highlightLessonId:', highlightLessonId);
+    console.log('allLessonDetailsLoaded:', allLessonDetailsLoaded);
+    if (highlightLessonId) {
+      console.log('lessonDetails[highlightLessonId]:', lessonDetails[highlightLessonId]);
+    }
+    if (
+      highlightLessonId &&
+      allLessonDetailsLoaded &&
+      lessonDetails[highlightLessonId] &&
+      lessonDetails[highlightLessonId].assessments?.length > 0
+    ) {
+      setExpandedLesson(highlightLessonId);
+    }
+  }, [highlightLessonId, lessonDetails, allLessonDetailsLoaded, lessons]);
+
+  React.useEffect(() => {
+    if (highlightAssessment && assessmentRefs.current[highlightAssessment]) {
+      assessmentRefs.current[highlightAssessment]?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      });
+    }
+  }, [highlightAssessment]);
 
   // Fetch lessons for this class
   useEffect(() => {
@@ -413,6 +458,8 @@ export default function ClassDetailsPage() {
     }
   }, [showAssessmentModal]);
 
+  const assessmentRefs = React.useRef<Record<string, HTMLLIElement | null>>({});
+
   return (
     <div className="p-8 max-w-3xl mx-auto">
       <button className="btn btn-ghost mb-4" onClick={() => router.back()}>
@@ -454,6 +501,7 @@ export default function ClassDetailsPage() {
         <div className="space-y-6">
           {lessons.map((lesson) => {
             const isExpanded = expandedLesson === lesson.id;
+            console.log('Rendering lesson', lesson.id, 'isExpanded:', isExpanded, 'expandedLesson:', expandedLesson);
             return (
               <div
                 key={lesson.id}
@@ -574,83 +622,92 @@ export default function ClassDetailsPage() {
                     )}
                     {lessonDetails[lesson.id]?.assessments?.length > 0 && (
                       <ul className="list-disc pl-5 mt-2">
-                        {lessonDetails[lesson.id].assessments.map((a) => (
-                          <li
-                            key={a.id}
-                            className="flex items-center justify-between gap-2 py-1"
-                          >
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium">{a.title}</span>
-                              {a.deadline && (
-                                <span className="ml-2 text-xs text-gray-500">
-                                  (Due:{' '}
-                                  {new Date(a.deadline).toLocaleDateString()})
-                                </span>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <a
-                                href={a.pdfUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="p-2 rounded-full hover:bg-gray-100 transition"
-                                title="Download Assignment"
-                              >
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  fill="none"
-                                  viewBox="0 0 24 24"
-                                  strokeWidth={1.5}
-                                  stroke="currentColor"
-                                  className="w-5 h-5"
+                        {lessonDetails[lesson.id].assessments.map((a) => {
+                          return (
+                            <li
+                              key={a.id}
+                              ref={(el) => {
+                                assessmentRefs.current[a.id] = el;
+                              }}
+                              className={`flex items-center justify-between gap-2 py-1 ${
+                                a.id === highlightAssessment
+                                  ? 'bg-yellow-100 border-l-4 border-yellow-400'
+                                  : ''
+                              }`}
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">{a.title}</span>
+                                {a.deadline && (
+                                  <span className="ml-2 text-xs text-gray-500">
+                                    (Due:{' '}
+                                    {new Date(a.deadline).toLocaleDateString()})
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <a
+                                  href={a.pdfUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="p-2 rounded-full hover:bg-gray-100 transition"
+                                  title="Download Assignment"
                                 >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M12 4.5v11m0 0l-4-4m4 4l4-4m-7 7.5h10.5a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5H4.5A2.25 2.25 0 002.25 6.75v10.5A2.25 2.25 0 004.5 19.5H7"
-                                  />
-                                </svg>
-                              </a>
-                              {!isTeacher &&
-                                (() => {
-                                  const userId = (session?.user as any)?.id;
-                                  const submissions = Array.isArray(
-                                    (a as any).submissions
-                                  )
-                                    ? (a as any).submissions
-                                    : [];
-                                  const submitted = submissions.some(
-                                    (s: any) => s.studentId === userId
-                                  );
-                                  if (submitted) {
-                                    return (
-                                      <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-semibold">
-                                        Answer Submitted
-                                      </span>
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    strokeWidth={1.5}
+                                    stroke="currentColor"
+                                    className="w-5 h-5"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      d="M12 4.5v11m0 0l-4-4m4 4l4-4m-7 7.5h10.5a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5H4.5A2.25 2.25 0 002.25 6.75v10.5A2.25 2.25 0 004.5 19.5H7"
+                                    />
+                                  </svg>
+                                </a>
+                                {!isTeacher &&
+                                  (() => {
+                                    const userId = (session?.user as any)?.id;
+                                    const submissions = Array.isArray(
+                                      (a as any).submissions
+                                    )
+                                      ? (a as any).submissions
+                                      : [];
+                                    const submitted = submissions.some(
+                                      (s: any) => s.studentId === userId
                                     );
-                                  }
-                                  return (
-                                    <button
-                                      className="px-3 py-1 rounded-full border border-primary text-primary text-xs hover:bg-primary hover:text-white transition bg-white"
-                                      onClick={() =>
-                                        setSubmitAssessmentId(a.id)
-                                      }
-                                    >
-                                      Submit Answer
-                                    </button>
-                                  );
-                                })()}
-                              {isTeacher && (
-                                <button
-                                  className="px-3 py-1 rounded-full border border-accent text-accent text-xs hover:bg-accent hover:text-white transition bg-white"
-                                  onClick={() => setMarkAssessmentId(a.id)}
-                                >
-                                  Mark Assessment
-                                </button>
-                              )}
-                            </div>
-                          </li>
-                        ))}
+                                    if (submitted) {
+                                      return (
+                                        <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-semibold">
+                                          Answer Submitted
+                                        </span>
+                                      );
+                                    }
+                                    return (
+                                      <button
+                                        className="px-3 py-1 rounded-full border border-primary text-primary text-xs hover:bg-primary hover:text-white transition bg-white"
+                                        onClick={() =>
+                                          setSubmitAssessmentId(a.id)
+                                        }
+                                      >
+                                        Submit Answer
+                                      </button>
+                                    );
+                                  })()}
+                                {isTeacher && (
+                                  <button
+                                    className="px-3 py-1 rounded-full border border-accent text-accent text-xs hover:bg-accent hover:text-white transition bg-white"
+                                    onClick={() => setMarkAssessmentId(a.id)}
+                                  >
+                                    Mark Assessment
+                                  </button>
+                                )}
+                              </div>
+                            </li>
+                          );
+                        })}
                       </ul>
                     )}
                     {/* Videos under lesson */}

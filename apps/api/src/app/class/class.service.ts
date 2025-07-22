@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { Class } from '@prisma/client';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { randomUUID } from 'crypto';
 
@@ -13,7 +12,7 @@ export class ClassService {
     subject: string,
     teacherId: string,
     file?: any
-  ): Promise<Class> {
+  ): Promise<any> {
     let thumbnailUrl: string | undefined = undefined;
     if (file) {
       // S3 upload
@@ -40,15 +39,15 @@ export class ClassService {
     });
   }
 
-  async listClasses(): Promise<Class[]> {
+  async listClasses(): Promise<any[]> {
     return this.prisma.class.findMany();
   }
 
-  async getClassById(id: string): Promise<Class | null> {
+  async getClassById(id: string): Promise<any | null> {
     return this.prisma.class.findUnique({ where: { id } });
   }
 
-  async getEnrolledClasses(studentId: string): Promise<Class[]> {
+  async getEnrolledClasses(studentId: string): Promise<any[]> {
     return this.prisma.class.findMany({
       where: {
         enrollments: {
