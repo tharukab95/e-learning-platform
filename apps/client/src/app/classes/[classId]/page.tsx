@@ -5,6 +5,8 @@ import { useSession } from 'next-auth/react';
 import { useParams } from 'next/navigation';
 import { useRouter } from 'next/navigation';
 import { useState as useToggleState } from 'react';
+import Skeleton from 'react-loading-skeleton';
+import 'react-loading-skeleton/dist/skeleton.css';
 
 interface Lesson {
   id: string;
@@ -428,7 +430,24 @@ export default function ClassDetailsPage() {
         )}
       </div>
       {loading ? (
-        <div>Loading lessons...</div>
+        <div className="space-y-6">
+          {[...Array(3)].map((_, idx) => (
+            <div
+              key={idx}
+              className="bg-white rounded shadow p-4 mb-2 flex flex-col"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex-1">
+                  <Skeleton height={28} width="60%" className="mb-2" />
+                  <Skeleton height={18} width="80%" />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Skeleton circle width={32} height={32} />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       ) : lessons.length === 0 ? (
         <div className="text-gray-500">No lessons created yet.</div>
       ) : (
@@ -447,10 +466,8 @@ export default function ClassDetailsPage() {
                   }
                 >
                   <div className="flex-1">
-                    <h2 className="text-xl font-bold mb-1 inline-block align-middle">
-                      {lesson.name}
-                    </h2>
-                    <p className="text-gray-600 mb-0.5 text-sm inline-block align-middle ml-2">
+                    <h2 className="text-xl font-bold mb-1">{lesson.name}</h2>
+                    <p className="text-gray-600 mb-0.5 text-sm">
                       {lesson.description}
                     </p>
                   </div>

@@ -9,6 +9,8 @@ import { signOut } from 'next-auth/react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useMemo } from 'react';
+import Skeleton from 'react-loading-skeleton';
+import 'react-loading-skeleton/dist/skeleton.css';
 
 interface Lesson {
   id: string;
@@ -177,7 +179,21 @@ export default function StudentDashboard() {
         <div>
           <h2 className="text-2xl font-bold mb-4">All Classes</h2>
           {loadingClasses ? (
-            <div>Loading...</div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[...Array(3)].map((_, idx) => (
+                <div
+                  key={idx}
+                  className="w-[200px] bg-white shadow-lg border border-gray-200 rounded-xl overflow-hidden flex flex-col p-3"
+                >
+                  <Skeleton height={180} className="mb-3" />
+                  <Skeleton height={24} width="80%" className="mb-2" />
+                  <Skeleton height={16} width="60%" />
+                  <div className="mt-4">
+                    <Skeleton height={32} width={100} />
+                  </div>
+                </div>
+              ))}
+            </div>
           ) : enrolledClasses.length + availableClasses.length === 0 ? (
             <div className="text-gray-500">No classes found.</div>
           ) : (
@@ -206,7 +222,15 @@ export default function StudentDashboard() {
         {/* Upcoming Lessons & Assessments */}
         <div>
           <h2 className="text-2xl font-bold mb-4">Upcoming</h2>
-          {upcomingAssessments.length === 0 ? (
+          {loadingClasses ? (
+            <ul className="list-disc pl-5 space-y-2">
+              {[...Array(3)].map((_, idx) => (
+                <li key={idx}>
+                  <Skeleton height={20} width="80%" />
+                </li>
+              ))}
+            </ul>
+          ) : upcomingAssessments.length === 0 ? (
             <div className="text-gray-500">
               No upcoming assessments in the next week.
             </div>
