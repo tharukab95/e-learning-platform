@@ -2,31 +2,50 @@
   "name": "@elearning-monerepo/source",
   "version": "0.0.0",
   "license": "MIT",
-  "scripts": {},
+  "scripts": {
+    "dev": "nx run-many --target=serve --parallel --projects=client,api",
+    "build": "nx run-many --target=build --parallel --projects=client,api",
+    "start:prod": "node dist/apps/api/main.js & serve -s dist/apps/client"
+  },
   "private": true,
   "dependencies": {
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/core": "^11.0.0",
+    "@nestjs/platform-express": "^11.0.0",
+    "axios": "^1.6.0",
     "next": "~15.2.4",
-    "react": "19.0.0",
-    "react-dom": "19.0.0"
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "reflect-metadata": "^0.1.13",
+    "rxjs": "^7.8.0"
   },
   "devDependencies": {
     "@eslint/compat": "^1.1.1",
     "@eslint/eslintrc": "^2.1.1",
     "@eslint/js": "^9.8.0",
+    "@nestjs/schematics": "^11.0.0",
+    "@nestjs/testing": "^11.0.0",
     "@next/eslint-plugin-next": "^15.2.4",
+    "@nrwl/nest": "^19.8.4",
+    "@nrwl/next": "^19.8.4",
     "@nx/devkit": "21.3.2",
     "@nx/eslint": "21.3.2",
     "@nx/eslint-plugin": "21.3.2",
     "@nx/jest": "21.3.2",
     "@nx/js": "21.3.2",
-    "@nx/next": "21.3.2",
+    "@nx/nest": "^21.3.2",
+    "@nx/next": "^21.3.2",
+    "@nx/node": "21.3.2",
     "@nx/playwright": "21.3.2",
+    "@nx/web": "21.3.2",
+    "@nx/webpack": "21.3.2",
     "@nx/workspace": "21.3.2",
     "@playwright/test": "^1.36.0",
     "@swc-node/register": "~1.9.1",
     "@swc/cli": "~0.6.0",
     "@swc/core": "~1.5.7",
     "@swc/helpers": "~0.5.11",
+    "@swc/jest": "~0.2.38",
     "@testing-library/dom": "10.4.0",
     "@testing-library/react": "16.1.0",
     "@types/jest": "^30.0.0",
@@ -43,8 +62,11 @@
     "eslint-plugin-playwright": "^1.6.2",
     "eslint-plugin-react": "7.35.0",
     "eslint-plugin-react-hooks": "5.0.0",
+    "install": "^0.13.0",
     "jest": "^30.0.2",
     "jest-environment-jsdom": "^30.0.2",
+    "jest-environment-node": "^30.0.2",
+    "npm": "^11.4.2",
     "nx": "21.3.2",
     "postcss": "8.4.38",
     "prettier": "^2.6.2",
@@ -53,9 +75,13 @@
     "ts-node": "10.9.1",
     "tslib": "^2.3.0",
     "typescript": "~5.8.2",
-    "typescript-eslint": "^8.29.0"
+    "typescript-eslint": "^8.29.0",
+    "webpack-cli": "^5.1.4"
   },
   "workspaces": [
-    "apps/*"
+    "apps/*",
+    "client",
+    "api",
+    "api-e2e"
   ]
 }
