@@ -464,6 +464,34 @@ export default function ClassDetailsPage() {
 
   const assessmentRefs = React.useRef<Record<string, HTMLLIElement | null>>({});
 
+  // Calculate assessment completion for students
+  const userId = (session?.user as any)?.id;
+  let totalAssessments = 0;
+  let completedAssessments = 0;
+  if (
+    !isTeacher &&
+    lessons.length > 0 &&
+    Object.keys(lessonDetails).length > 0
+  ) {
+    for (const lesson of lessons) {
+      const details = lessonDetails[lesson.id];
+      if (details && Array.isArray(details.assessments)) {
+        for (const a of details.assessments) {
+          totalAssessments++;
+          if (
+            Array.isArray(a.submissions) &&
+            a.submissions.some((s: any) => s.studentId === userId)
+          ) {
+            completedAssessments++;
+          }
+        }
+      }
+    }
+  }
+  const completionPercent = totalAssessments
+    ? Math.round((completedAssessments / totalAssessments) * 100)
+    : 0;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-white">
       {/* Header NavBar */}
@@ -488,6 +516,13 @@ export default function ClassDetailsPage() {
       {/* Main Content Card */}
       <main className="max-w-3xl mx-auto mt-10 mb-16 px-4">
         <div className="bg-white/90 rounded-2xl shadow-xl p-8 flex flex-col gap-10">
+          {/* Assessment Completion for Students */}
+          {!isTeacher && totalAssessments > 0 && (
+            <div className="mb-4 text-lg font-medium text-indigo-700">
+              Assessment Completion: {completedAssessments}/{totalAssessments} (
+              {completionPercent}%)
+            </div>
+          )}
           <button className="btn btn-ghost mb-4" onClick={() => router.back()}>
             &larr; Back
           </button>

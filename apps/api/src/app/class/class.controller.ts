@@ -7,6 +7,7 @@ import {
   UseGuards,
   UploadedFile,
   UseInterceptors,
+  Param,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ClassService } from './class.service';
@@ -40,5 +41,12 @@ export class ClassController {
   @Get('enrolled')
   async getEnrolledClasses(@Req() req: any) {
     return this.classService.getEnrolledClasses(req.user.id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Roles('teacher')
+  @Get(':id/progress')
+  async getClassStudentProgress(@Param('id') classId: string) {
+    return this.classService.getClassStudentProgress(classId);
   }
 }

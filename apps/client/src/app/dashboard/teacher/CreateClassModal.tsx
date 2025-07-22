@@ -82,7 +82,7 @@ const CreateClassModal: React.FC<CreateClassModalProps> = ({
                 <input
                   id="title"
                   {...register('title', { required: 'Title is required' })}
-                  className="input input-bordered w-full mt-1 border-2 border-gray-300 bg-gray-50 focus:border-primary focus:bg-white focus:outline-none"
+                  className="input input-bordered w-full mt-1 border-2 border-gray-300 bg-gray-50 focus:border-primary focus:bg-white focus:outline-none px-3 py-2"
                 />
                 {errors.title && (
                   <p className="text-red-500 text-xs mt-1">
@@ -97,7 +97,7 @@ const CreateClassModal: React.FC<CreateClassModalProps> = ({
                 <input
                   id="subject"
                   {...register('subject', { required: 'Subject is required' })}
-                  className="input input-bordered w-full mt-1 border-2 border-gray-300 bg-gray-50 focus:border-primary focus:bg-white focus:outline-none"
+                  className="input input-bordered w-full mt-1 border-2 border-gray-300 bg-gray-50 focus:border-primary focus:bg-white focus:outline-none px-3 py-2"
                 />
                 {errors.subject && (
                   <p className="text-red-500 text-xs mt-1">
@@ -115,7 +115,7 @@ const CreateClassModal: React.FC<CreateClassModalProps> = ({
                 <textarea
                   id="description"
                   {...register('description')}
-                  className="textarea textarea-bordered w-full mt-1 border-2 border-gray-300 bg-gray-50 focus:border-primary focus:bg-white focus:outline-none"
+                  className="textarea textarea-bordered w-full mt-1 border-2 border-gray-300 bg-gray-50 focus:border-primary focus:bg-white focus:outline-none px-3 py-2"
                   rows={4}
                 />
               </div>
@@ -175,13 +175,23 @@ const CreateClassModal: React.FC<CreateClassModalProps> = ({
               />
             </div>
           </div>
-          <button
-            type="submit"
-            className="btn btn-primary w-full"
-            disabled={isPending}
-          >
-            {isPending ? 'Creating...' : 'Create Class'}
-          </button>
+          <div className="flex justify-end gap-2 mt-6">
+            <button
+              type="button"
+              className="px-6 py-2 rounded-full border border-gray-300 text-gray-500 shadow-sm hover:border-primary hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all bg-white"
+              onClick={onClose}
+              disabled={isPending}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-6 py-2 rounded-full border border-primary text-primary shadow-sm hover:bg-primary hover:text-white focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all bg-white"
+              disabled={isPending}
+            >
+              {isPending ? 'Creating...' : 'Create Class'}
+            </button>
+          </div>
         </form>
       </div>
     </div>

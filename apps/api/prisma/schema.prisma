@@ -89,6 +89,7 @@ model AssessmentSubmission {
   pdfUrl       String
   grade        Float?
   feedback     String?
+  createdAt    DateTime  @default(now())
 }
 
 model Notification {
@@ -110,4 +111,6 @@ model Lesson {
   classId     String
   videos      Video[]
   assessments Assessment[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
 }

@@ -13,6 +13,7 @@ import { useSession } from 'next-auth/react';
 import ClassCard from '@/components/ClassCard';
 import CreateClassModal from './CreateClassModal';
 import { useRouter } from 'next/navigation';
+import { useMemo } from 'react';
 
 interface CreateClassFormValues {
   title: string;
@@ -73,6 +74,10 @@ export default function TeacherDashboard() {
   const [enrollmentCounts, setEnrollmentCounts] = useState<
     Record<string, number>
   >({});
+  const [distinctStudentCount, setDistinctStudentCount] = useState(0);
+  const [upcomingAssessments, setUpcomingAssessments] = useState<any[]>([]);
+  const [lessonPlanCompletion, setLessonPlanCompletion] = useState<any[]>([]);
+  const [studentProgress, setStudentProgress] = useState<any[]>([]);
   const { data: session } = useSession();
   const router = useRouter();
 
@@ -173,14 +178,13 @@ export default function TeacherDashboard() {
         `${
           process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
         }/api/classes`,
-        {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        }
+        { headers: token ? { Authorization: `Bearer ${token}` } : {} }
       );
       if (res.ok) {
         const allClasses = await res.json();
         setCreatedClasses(Array.isArray(allClasses) ? allClasses : []);
-        // Fetch enrollment counts for each class
+        // Fetch enrollment counts for each class and collect unique students
+        const studentSet = new Set();
         const counts: Record<string, number> = {};
         await Promise.all(
           (Array.isArray(allClasses) ? allClasses : []).map(async (c: any) => {
@@ -188,23 +192,156 @@ export default function TeacherDashboard() {
               `${
                 process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
               }/api/classes/${c.id}/students`,
-              {
-                headers: token ? { Authorization: `Bearer ${token}` } : {},
-              }
+              { headers: token ? { Authorization: `Bearer ${token}` } : {} }
             );
             if (countRes.ok) {
               const students = await countRes.json();
-              counts[c.id] = Array.isArray(students) ? students.length : 0;
+              // Count unique student IDs for this class
+              const uniqueIds = new Set(
+                (Array.isArray(students) ? students : []).map(
+                  (s: any) => s.studentId || s.id
+                )
+              );
+              counts[c.id] = uniqueIds.size;
+              (Array.isArray(students) ? students : []).forEach((s: any) =>
+                studentSet.add(s.studentId || s.id)
+              );
             } else {
               counts[c.id] = 0;
             }
           })
         );
         setEnrollmentCounts(counts);
+        setDistinctStudentCount(studentSet.size);
       }
     };
     fetchClasses();
   }, [session?.user]);
+
+  // Fetch upcoming assessments for all classes
+  useEffect(() => {
+    const fetchUpcoming = async () => {
+      const token = (session?.user as any)?.access_token;
+      if (!token || !createdClasses.length) {
+        setUpcomingAssessments([]);
+        return;
+      }
+      const allUpcoming: any[] = [];
+      for (const c of createdClasses) {
+        const lessonsRes = await fetch(
+          `${
+            process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
+          }/api/classes/${c.id}/lessons`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        const lessons = lessonsRes.ok ? await lessonsRes.json() : [];
+        for (const lesson of lessons) {
+          const assessmentsRes = await fetch(
+            `${
+              process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
+            }/api/lessons/${lesson.id}/assessments`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          const assessments = assessmentsRes.ok
+            ? await assessmentsRes.json()
+            : [];
+          for (const a of assessments) {
+            const due = new Date(a.deadline);
+            if (due > new Date()) {
+              allUpcoming.push({
+                assessmentTitle: a.title,
+                due,
+                className: c.title,
+                lessonName: lesson.name,
+              });
+            }
+          }
+        }
+      }
+      allUpcoming.sort((a, b) => a.due.getTime() - b.due.getTime());
+      setUpcomingAssessments(allUpcoming);
+    };
+    fetchUpcoming();
+  }, [createdClasses, session?.user]);
+
+  // Fetch lesson plan completion for each class
+  useEffect(() => {
+    const fetchLessonPlans = async () => {
+      const token = (session?.user as any)?.access_token;
+      if (!token || !createdClasses.length) {
+        setLessonPlanCompletion([]);
+        return;
+      }
+      const plans: any[] = [];
+      for (const c of createdClasses) {
+        const lessonsRes = await fetch(
+          `${
+            process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
+          }/api/classes/${c.id}/lessons`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        const lessons = lessonsRes.ok ? await lessonsRes.json() : [];
+        const total = lessons.length;
+        const withContent = lessons.filter(
+          (l: any) => l.pdfUrl || (l.videos && l.videos.length)
+        ).length;
+        plans.push({ className: c.title, total, withContent });
+      }
+      setLessonPlanCompletion(plans);
+    };
+    fetchLessonPlans();
+  }, [createdClasses, session?.user]);
+
+  // Fetch student progress for all classes
+  useEffect(() => {
+    const fetchStudentProgress = async () => {
+      const token = (session?.user as any)?.access_token;
+      if (!token || !createdClasses.length) {
+        setStudentProgress([]);
+        return;
+      }
+      const progressMap: Record<
+        string,
+        { name: string; completion: number; lastSubmissionDate: string | null }
+      > = {};
+      for (const c of createdClasses) {
+        const res = await fetch(
+          `${
+            process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
+          }/api/classes/${c.id}/progress`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (res.ok) {
+          const data = await res.json();
+          for (const row of data) {
+            const key = row.studentName;
+            if (!progressMap[key]) {
+              progressMap[key] = {
+                name: row.studentName,
+                completion: row.completion,
+                lastSubmissionDate: row.lastSubmissionDate,
+              };
+            } else {
+              // Take the highest completion and latest submission date
+              progressMap[key].completion = Math.max(
+                progressMap[key].completion,
+                row.completion
+              );
+              if (
+                !progressMap[key].lastSubmissionDate ||
+                (row.lastSubmissionDate &&
+                  row.lastSubmissionDate > progressMap[key].lastSubmissionDate)
+              ) {
+                progressMap[key].lastSubmissionDate = row.lastSubmissionDate;
+              }
+            }
+          }
+        }
+      }
+      setStudentProgress(Object.values(progressMap));
+    };
+    fetchStudentProgress();
+  }, [createdClasses, session?.user]);
 
   const onThumbnailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
@@ -249,12 +386,6 @@ export default function TeacherDashboard() {
     setIsPending(false);
   };
 
-  // Calculate total enrolled students
-  const totalEnrolled = Object.values(enrollmentCounts).reduce(
-    (sum, count) => sum + count,
-    0
-  );
-
   return (
     <div className="p-8 space-y-8">
       <div className="flex justify-between items-center">
@@ -263,35 +394,97 @@ export default function TeacherDashboard() {
           Logout
         </button>
       </div>
-
-      {/* Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="stat bg-base-100 shadow">
-          <div className="stat-title">Enrolled Students</div>
-          <div className="stat-value">{totalEnrolled}</div>
-        </div>
-        <div className="stat bg-base-100 shadow">
-          <div className="stat-title">Completion Rate</div>
-          <div className="stat-value">88%</div>
-        </div>
-        <div className="stat bg-base-100 shadow">
-          <div className="stat-title">Upcoming Assessments</div>
-          <div className="stat-value">3</div>
-        </div>
-      </div>
-
       {/* Actions */}
-      <div className="space-x-4">
+      <div className="flex gap-4 mb-4">
         <button className="btn btn-primary" onClick={() => setShowModal(true)}>
-          Create New Class
+          + Create Class
         </button>
-        <button className="btn btn-secondary">Upload Video</button>
         <button
           className="btn btn-accent"
           onClick={() => setShowAssessmentModal(true)}
         >
-          Create Assessment
+          + Create Assessment
         </button>
+      </div>
+      {/* Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="stat bg-base-100 shadow">
+          <div className="stat-title">Enrolled Students</div>
+          <div className="stat-value">{distinctStudentCount}</div>
+        </div>
+        <div className="stat bg-base-100 shadow">
+          <div className="stat-title">Upcoming Assessments</div>
+          <div className="stat-value">{upcomingAssessments.length}</div>
+        </div>
+      </div>
+      {/* Lesson Plan Completion Table */}
+      <div className="mt-8">
+        <h2 className="text-xl font-bold mb-4">Lesson Plan Completion</h2>
+        <table className="table w-full bg-white rounded shadow">
+          <thead>
+            <tr>
+              <th>Class</th>
+              <th>Covered/Completion</th>
+            </tr>
+          </thead>
+          <tbody>
+            {lessonPlanCompletion.map((plan, idx) => (
+              <tr key={idx}>
+                <td>{plan.className}</td>
+                <td>
+                  {plan.withContent}/{plan.total} (
+                  {plan.total
+                    ? Math.round((plan.withContent / plan.total) * 100)
+                    : 0}
+                  %)
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {/* Show all created classes with nice card UI */}
+      {createdClasses.length > 0 && (
+        <div className="mt-8">
+          <h2 className="text-xl font-bold mb-4">Your Created Classes</h2>
+          <div className="flex flex-wrap gap-4">
+            {createdClasses.map((c) => (
+              <div key={c.id} className="relative">
+                <ClassCard
+                  classInfo={c}
+                  onClick={() => router.push(`/classes/${c.id}/lesson-plan`)}
+                />
+                <div className="absolute top-2 left-2 bg-teal-700 text-white text-xs rounded-full px-2 py-0.5 shadow">
+                  {enrollmentCounts[c.id] === 1
+                    ? '1 student'
+                    : `${enrollmentCounts[c.id] ?? 0} students`}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {/* Student Progress Table */}
+      <div className="mt-8">
+        <h2 className="text-xl font-bold mb-4">Student Progress</h2>
+        <table className="table w-full bg-white rounded shadow">
+          <thead>
+            <tr>
+              <th>Student Name</th>
+              <th>Completion</th>
+              <th>Last Submission Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {studentProgress.map((row, idx) => (
+              <tr key={idx}>
+                <td>{row.name}</td>
+                <td>{row.completion}%</td>
+                <td>{row.lastSubmissionDate}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
       {/* Create Class Modal */}
@@ -320,7 +513,7 @@ export default function TeacherDashboard() {
                   name="classId"
                   value={assessmentForm.classId}
                   onChange={handleAssessmentInputChange}
-                  className="select select-bordered w-full"
+                  className="select select-bordered w-full bg-gray-50 border-2 border-gray-300 focus:border-primary focus:bg-white focus:outline-none px-3 py-2"
                   required
                 >
                   <option value="">Select a class</option>
@@ -337,7 +530,7 @@ export default function TeacherDashboard() {
                   name="lessonId"
                   value={assessmentForm.lessonId}
                   onChange={handleAssessmentInputChange}
-                  className="select select-bordered w-full"
+                  className="select select-bordered w-full bg-gray-50 border-2 border-gray-300 focus:border-primary focus:bg-white focus:outline-none px-3 py-2"
                   required
                   disabled={!assessmentForm.classId}
                 >
@@ -358,7 +551,7 @@ export default function TeacherDashboard() {
                   name="title"
                   value={assessmentForm.title}
                   onChange={handleAssessmentInputChange}
-                  className="input input-bordered w-full"
+                  className="input input-bordered w-full bg-gray-50 border-2 border-gray-300 focus:border-primary focus:bg-white focus:outline-none px-3 py-2"
                   required
                 />
               </div>
@@ -371,7 +564,7 @@ export default function TeacherDashboard() {
                   name="deadline"
                   value={assessmentForm.deadline}
                   onChange={handleAssessmentInputChange}
-                  className="input input-bordered w-full"
+                  className="input input-bordered w-full bg-gray-50 border-2 border-gray-300 focus:border-primary focus:bg-white focus:outline-none px-3 py-2"
                   required
                 />
               </div>
@@ -385,7 +578,7 @@ export default function TeacherDashboard() {
                   name="pdf"
                   ref={assessmentFileInputRef}
                   onChange={handleAssessmentFileChange}
-                  className="file-input file-input-bordered w-full"
+                  className="file-input file-input-bordered w-full bg-gray-50 border-2 border-gray-300 focus:border-primary focus:bg-white focus:outline-none px-3 py-2"
                   required
                 />
               </div>
@@ -413,50 +606,6 @@ export default function TeacherDashboard() {
           </div>
         </div>
       )}
-
-      {/* Show all created classes with nice card UI */}
-      {createdClasses.length > 0 && (
-        <div className="mt-8">
-          <h2 className="text-xl font-bold mb-4">Your Created Classes</h2>
-          <div className="flex flex-wrap gap-4">
-            {createdClasses.map((c) => (
-              <div key={c.id} className="relative">
-                <ClassCard
-                  classInfo={c}
-                  onClick={() => router.push(`/classes/${c.id}`)}
-                />
-                <div className="absolute top-2 left-2 bg-teal-700 text-white text-xs rounded-full px-2 py-0.5 shadow">
-                  {enrollmentCounts[c.id] === 1
-                    ? '1 student'
-                    : `${enrollmentCounts[c.id] ?? 0} students`}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Recent Notifications */}
-        <div>
-          <h2 className="text-2xl font-bold mb-4">Recent Notifications</h2>
-          <div className="bg-white rounded shadow">
-            {mockNotifications.map((n) => (
-              <NotificationItem
-                key={n.id}
-                notification={n}
-                onClick={() => {}}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* Student Progress */}
-        <div>
-          <h2 className="text-2xl font-bold mb-4">Student Progress</h2>
-          <AnalyticsTable data={mockAnalytics} />
-        </div>
-      </div>
     </div>
   );
 }

@@ -73,7 +73,10 @@ export class LessonService {
   }
 
   async listLessonsByClass(classId: string) {
-    return this.prisma.lesson.findMany({ where: { classId } });
+    return this.prisma.lesson.findMany({
+      where: { classId },
+      orderBy: { createdAt: 'asc' },
+    });
   }
 
   async getLessonById(id: string) {
