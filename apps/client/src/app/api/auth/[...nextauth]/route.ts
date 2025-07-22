@@ -58,6 +58,8 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.role = (user as { role?: string }).role;
         token.access_token = (user as { access_token?: string }).access_token;
+        // Add user id to token
+        token.id = (user as any).id || (user as any).sub;
       }
       return token;
     },
@@ -67,14 +69,18 @@ export const authOptions: NextAuthOptions = {
           session.user as typeof session.user & {
             role?: string;
             access_token?: string;
+            id?: string;
           }
         ).role = token.role as string;
         (
           session.user as typeof session.user & {
             role?: string;
             access_token?: string;
+            id?: string;
           }
         ).access_token = token.access_token as string;
+        // Add user id to session.user
+        (session.user as any).id = (token as any).id;
       }
       return session;
     },

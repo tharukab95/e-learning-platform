@@ -12,12 +12,14 @@ interface ClassCardProps {
   };
   onEnroll?: (id: string) => void;
   onClick?: (id: string) => void;
+  enrolled?: boolean;
 }
 
 const ClassCard: React.FC<ClassCardProps> = ({
   classInfo,
   onEnroll,
   onClick,
+  enrolled,
 }) => {
   return (
     <div
@@ -44,14 +46,24 @@ const ClassCard: React.FC<ClassCardProps> = ({
         <p className="text-xs text-gray-500 line-clamp-1 mb-1">
           {classInfo.subject}
         </p>
-        {onEnroll && (
+        {onEnroll && !enrolled && (
           <div className="card-actions justify-end mt-2">
             <button
-              onClick={() => onEnroll(classInfo.id)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onEnroll(classInfo.id);
+              }}
               className="px-4 py-1 text-sm font-bold rounded-full shadow-md bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700 active:scale-95 transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-blue-300"
             >
               Enroll Now
             </button>
+          </div>
+        )}
+        {enrolled && (
+          <div className="card-actions justify-end mt-2">
+            <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-semibold">
+              Enrolled
+            </span>
           </div>
         )}
       </div>

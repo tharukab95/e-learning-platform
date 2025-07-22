@@ -80,8 +80,19 @@ export class LessonService {
     return this.prisma.lesson.findUnique({ where: { id } });
   }
 
-  async getLessonAssessments(lessonId: string) {
-    return this.prisma.assessment.findMany({ where: { lessonId } });
+  async getLessonAssessments(lessonId: string, userId?: string) {
+    if (userId) {
+      // For students, include their submissions (possibly empty array)
+      return this.prisma.assessment.findMany({
+        where: { lessonId },
+        include: {
+          submissions: true,
+        },
+      });
+    } else {
+      // For teachers, just return assessments
+      return this.prisma.assessment.findMany({ where: { lessonId } });
+    }
   }
 
   async getLessonVideos(lessonId: string) {

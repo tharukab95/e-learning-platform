@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-empty-function */
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import AnalyticsTable from '@/components/AnalyticsTable';
 import NotificationItem from '@/components/NotificationItem';
 import { signOut } from 'next-auth/react';
@@ -75,6 +75,94 @@ export default function TeacherDashboard() {
   >({});
   const { data: session } = useSession();
   const router = useRouter();
+
+  // Assessment creation modal state
+  const [showAssessmentModal, setShowAssessmentModal] = useState(false);
+  const [assessmentForm, setAssessmentForm] = useState({
+    classId: '',
+    lessonId: '',
+    title: '',
+    deadline: '',
+    file: null as File | null,
+  });
+  const [assessmentLessons, setAssessmentLessons] = useState<any[]>([]);
+  const [isAssessmentSubmitting, setIsAssessmentSubmitting] = useState(false);
+  const [assessmentError, setAssessmentError] = useState('');
+  const assessmentFileInputRef = useRef<HTMLInputElement>(null);
+
+  // Fetch lessons when class changes
+  useEffect(() => {
+    const fetchLessons = async () => {
+      if (!assessmentForm.classId) {
+        setAssessmentLessons([]);
+        return;
+      }
+      const token = (session?.user as any)?.access_token;
+      const res = await fetch(
+        `${
+          process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
+        }/api/classes/${assessmentForm.classId}/lessons`,
+        { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+      );
+      if (res.ok) {
+        const lessons = await res.json();
+        setAssessmentLessons(Array.isArray(lessons) ? lessons : []);
+      } else {
+        setAssessmentLessons([]);
+      }
+    };
+    fetchLessons();
+  }, [assessmentForm.classId, session?.user]);
+
+  const handleAssessmentInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
+    setAssessmentForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+  const handleAssessmentFileChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    setAssessmentForm((prev) => ({
+      ...prev,
+      file: e.target.files?.[0] || null,
+    }));
+  };
+  const handleCreateAssessment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsAssessmentSubmitting(true);
+    setAssessmentError('');
+    try {
+      const formData = new FormData();
+      formData.append('title', assessmentForm.title);
+      formData.append('deadline', assessmentForm.deadline);
+      formData.append('lessonId', assessmentForm.lessonId);
+      if (assessmentForm.file) formData.append('pdf', assessmentForm.file);
+      const token = (session?.user as any)?.access_token;
+      const res = await fetch(
+        `${
+          process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
+        }/api/assessments`,
+        {
+          method: 'POST',
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          body: formData,
+        }
+      );
+      if (!res.ok) throw new Error('Failed to create assessment');
+      setShowAssessmentModal(false);
+      setAssessmentForm({
+        classId: '',
+        lessonId: '',
+        title: '',
+        deadline: '',
+        file: null,
+      });
+    } catch (err: any) {
+      setAssessmentError(err?.message || 'Failed to create assessment');
+    } finally {
+      setIsAssessmentSubmitting(false);
+    }
+  };
 
   // Fetch all created classes on mount
   React.useEffect(() => {
@@ -198,7 +286,12 @@ export default function TeacherDashboard() {
           Create New Class
         </button>
         <button className="btn btn-secondary">Upload Video</button>
-        <button className="btn btn-accent">Create Assessment</button>
+        <button
+          className="btn btn-accent"
+          onClick={() => setShowAssessmentModal(true)}
+        >
+          Create Assessment
+        </button>
       </div>
 
       {/* Create Class Modal */}
@@ -208,6 +301,118 @@ export default function TeacherDashboard() {
         onSubmit={onSubmit}
         isPending={isPending}
       />
+
+      {/* Create Assessment Modal */}
+      {showAssessmentModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg p-8 max-w-lg w-full relative">
+            <button
+              className="absolute top-2 right-2 text-gray-500 hover:text-gray-800"
+              onClick={() => setShowAssessmentModal(false)}
+            >
+              &times;
+            </button>
+            <h2 className="text-2xl font-bold mb-4">Create Assessment</h2>
+            <form onSubmit={handleCreateAssessment} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Class</label>
+                <select
+                  name="classId"
+                  value={assessmentForm.classId}
+                  onChange={handleAssessmentInputChange}
+                  className="select select-bordered w-full"
+                  required
+                >
+                  <option value="">Select a class</option>
+                  {createdClasses.map((c: any) => (
+                    <option key={c.id} value={c.id}>
+                      {c.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Lesson</label>
+                <select
+                  name="lessonId"
+                  value={assessmentForm.lessonId}
+                  onChange={handleAssessmentInputChange}
+                  className="select select-bordered w-full"
+                  required
+                  disabled={!assessmentForm.classId}
+                >
+                  <option value="">Select a lesson</option>
+                  {assessmentLessons.map((l: any) => (
+                    <option key={l.id} value={l.id}>
+                      {l.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Assessment Name
+                </label>
+                <input
+                  type="text"
+                  name="title"
+                  value={assessmentForm.title}
+                  onChange={handleAssessmentInputChange}
+                  className="input input-bordered w-full"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Deadline
+                </label>
+                <input
+                  type="date"
+                  name="deadline"
+                  value={assessmentForm.deadline}
+                  onChange={handleAssessmentInputChange}
+                  className="input input-bordered w-full"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Assessment PDF
+                </label>
+                <input
+                  type="file"
+                  accept="application/pdf"
+                  name="pdf"
+                  ref={assessmentFileInputRef}
+                  onChange={handleAssessmentFileChange}
+                  className="file-input file-input-bordered w-full"
+                  required
+                />
+              </div>
+              {assessmentError && (
+                <div className="text-red-500 text-sm">{assessmentError}</div>
+              )}
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  className="px-6 py-2 rounded-full border border-gray-300 text-gray-500 shadow-sm hover:border-primary hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all bg-white"
+                  onClick={() => setShowAssessmentModal(false)}
+                  disabled={isAssessmentSubmitting}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-6 py-2 rounded-full border border-primary text-primary shadow-sm hover:bg-primary hover:text-white focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all bg-white"
+                  disabled={isAssessmentSubmitting}
+                >
+                  {isAssessmentSubmitting ? 'Creating...' : 'Create Assessment'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Show all created classes with nice card UI */}
       {createdClasses.length > 0 && (

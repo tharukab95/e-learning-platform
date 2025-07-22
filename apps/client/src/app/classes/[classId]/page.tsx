@@ -18,6 +18,7 @@ interface Assessment {
   title: string;
   pdfUrl: string;
   deadline: string;
+  submissions?: any[];
 }
 
 interface Video {
@@ -56,6 +57,36 @@ export default function ClassDetailsPage() {
   >({});
   const [refreshLessons, setRefreshLessons] = useState(0);
   const [expandedLesson, setExpandedLesson] = useState<string | null>(null);
+
+  // Assessment creation modal state
+  const [showAssessmentModal, setShowAssessmentModal] = useState<string | null>(
+    null
+  );
+  const [assessmentForm, setAssessmentForm] = useState({
+    title: '',
+    deadline: '',
+    file: null as File | null,
+  });
+  const [isAssessmentSubmitting, setIsAssessmentSubmitting] = useState(false);
+  const [assessmentError, setAssessmentError] = useState('');
+  const assessmentFileInputRef = useRef<HTMLInputElement>(null);
+
+  // Mark assessment modal state (teacher)
+  const [markAssessmentId, setMarkAssessmentId] = useState<string | null>(null);
+  const [assessmentSubmissions, setAssessmentSubmissions] = useState<any[]>([]);
+  const [grading, setGrading] = useState<
+    Record<string, { grade: string; feedback: string }>
+  >({});
+  const [gradingError, setGradingError] = useState('');
+  const [isGrading, setIsGrading] = useState(false);
+
+  // Student submission modal state
+  const [submitAssessmentId, setSubmitAssessmentId] = useState<string | null>(
+    null
+  );
+  const [submissionFile, setSubmissionFile] = useState<File | null>(null);
+  const [isSubmittingAssessment, setIsSubmittingAssessment] = useState(false);
+  const [submissionError, setSubmissionError] = useState('');
 
   const isTeacher = session?.user?.role === 'teacher';
   const token = (session?.user as any)?.access_token;
@@ -113,6 +144,28 @@ export default function ClassDetailsPage() {
     };
     fetchDetails();
   }, [lessons, token]);
+
+  // Fetch submissions for marking
+  useEffect(() => {
+    if (markAssessmentId && isTeacher) {
+      const fetchSubmissions = async () => {
+        const token = (session?.user as any)?.access_token;
+        const res = await fetch(
+          `${
+            process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
+          }/api/assessments/${markAssessmentId}/submissions`,
+          { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+        );
+        if (res.ok) {
+          const data = await res.json();
+          setAssessmentSubmissions(Array.isArray(data) ? data : []);
+        } else {
+          setAssessmentSubmissions([]);
+        }
+      };
+      fetchSubmissions();
+    }
+  }, [markAssessmentId, isTeacher, session?.user]);
 
   // Handle form input changes
   const handleInputChange = (
@@ -223,6 +276,140 @@ export default function ClassDetailsPage() {
       setDeleteLessonId(null);
     }
   };
+
+  const handleAssessmentInputChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    setAssessmentForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+  const handleAssessmentFileChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    setAssessmentForm((prev) => ({
+      ...prev,
+      file: e.target.files?.[0] || null,
+    }));
+  };
+  const handleCreateAssessment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!showAssessmentModal) return;
+    setIsAssessmentSubmitting(true);
+    setAssessmentError('');
+    try {
+      const formData = new FormData();
+      formData.append('title', assessmentForm.title);
+      formData.append('deadline', assessmentForm.deadline);
+      formData.append('lessonId', showAssessmentModal);
+      if (assessmentForm.file) formData.append('pdf', assessmentForm.file);
+      const res = await fetch(
+        `${
+          process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
+        }/api/assessments`,
+        {
+          method: 'POST',
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          body: formData,
+        }
+      );
+      if (!res.ok) throw new Error('Failed to create assessment');
+      setShowAssessmentModal(null);
+      setAssessmentForm({ title: '', deadline: '', file: null });
+      setRefreshLessons((v) => v + 1);
+    } catch (err: any) {
+      setAssessmentError(err?.message || 'Failed to create assessment');
+    } finally {
+      setIsAssessmentSubmitting(false);
+    }
+  };
+
+  // Handle grading input
+  const handleGradingInput = (
+    submissionId: string,
+    field: 'grade' | 'feedback',
+    value: string
+  ) => {
+    setGrading((prev) => ({
+      ...prev,
+      [submissionId]: { ...prev[submissionId], [field]: value },
+    }));
+  };
+
+  // Handle mark submission
+  const handleMarkSubmission = async (submissionId: string) => {
+    setIsGrading(true);
+    setGradingError('');
+    try {
+      const { grade, feedback } = grading[submissionId] || {};
+      const token = (session?.user as any)?.access_token;
+      const res = await fetch(
+        `${
+          process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
+        }/api/assessments/submissions/${submissionId}`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ grade: Number(grade), feedback }),
+        }
+      );
+      if (!res.ok) throw new Error('Failed to mark submission');
+      // Optionally refresh submissions
+      setAssessmentSubmissions((subs) =>
+        subs.map((s) => (s.id === submissionId ? { ...s, grade, feedback } : s))
+      );
+    } catch (err: any) {
+      setGradingError(err?.message || 'Failed to mark submission');
+    } finally {
+      setIsGrading(false);
+    }
+  };
+
+  // Handle student assessment submission
+  const handleAssessmentFileChangeStudent = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    setSubmissionFile(e.target.files?.[0] || null);
+  };
+  const handleSubmitAssessment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!submitAssessmentId || !submissionFile) return;
+    setIsSubmittingAssessment(true);
+    setSubmissionError('');
+    try {
+      const formData = new FormData();
+      formData.append('pdf', submissionFile);
+      const token = (session?.user as any)?.access_token;
+      const res = await fetch(
+        `${
+          process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
+        }/api/assessments/${submitAssessmentId}/submit`,
+        {
+          method: 'POST',
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          body: formData,
+        }
+      );
+      if (!res.ok) throw new Error('Failed to submit assessment');
+      setSubmitAssessmentId(null);
+      setSubmissionFile(null);
+      setRefreshLessons((v) => v + 1);
+    } catch (err: any) {
+      setSubmissionError(err?.message || 'Failed to submit assessment');
+    } finally {
+      setIsSubmittingAssessment(false);
+    }
+  };
+
+  useEffect(() => {
+    if (showAssessmentModal) {
+      // console.log(
+      //   'Assessment modal should be open for lesson',
+      //   showAssessmentModal
+      // );
+    }
+  }, [showAssessmentModal]);
 
   return (
     <div className="p-8 max-w-3xl mx-auto">
@@ -349,30 +536,105 @@ export default function ClassDetailsPage() {
                       className="w-full h-96 rounded border"
                     />
                     {/* Assessments under lesson */}
+                    <div className="mt-4 flex items-center justify-between">
+                      <h3 className="font-semibold mb-1">Assessments</h3>
+                    </div>
+                    {isTeacher && (
+                      <div className="mb-2 flex justify-end">
+                        <button
+                          className="px-4 py-1 rounded-full border border-primary text-primary shadow-sm hover:bg-primary hover:text-white focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all bg-white text-sm"
+                          onClick={() => {
+                            // console.log(
+                            //   'Clicked create assessment for lesson',
+                            //   lesson.id
+                            // );
+                            setShowAssessmentModal(lesson.id);
+                          }}
+                        >
+                          + Create Assessment
+                        </button>
+                      </div>
+                    )}
                     {lessonDetails[lesson.id]?.assessments?.length > 0 && (
-                      <div className="mt-4">
-                        <h3 className="font-semibold mb-1">Assessments</h3>
-                        <ul className="list-disc pl-5">
-                          {lessonDetails[lesson.id].assessments.map((a) => (
-                            <li key={a.id}>
-                              <a
-                                href={a.pdfUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="link link-primary"
-                              >
-                                {a.title}
-                              </a>
+                      <ul className="list-disc pl-5 mt-2">
+                        {lessonDetails[lesson.id].assessments.map((a) => (
+                          <li
+                            key={a.id}
+                            className="flex items-center justify-between gap-2 py-1"
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">{a.title}</span>
                               {a.deadline && (
                                 <span className="ml-2 text-xs text-gray-500">
                                   (Due:{' '}
                                   {new Date(a.deadline).toLocaleDateString()})
                                 </span>
                               )}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <a
+                                href={a.pdfUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-2 rounded-full hover:bg-gray-100 transition"
+                                title="Download Assignment"
+                              >
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  strokeWidth={1.5}
+                                  stroke="currentColor"
+                                  className="w-5 h-5"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M12 4.5v11m0 0l-4-4m4 4l4-4m-7 7.5h10.5a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5H4.5A2.25 2.25 0 002.25 6.75v10.5A2.25 2.25 0 004.5 19.5H7"
+                                  />
+                                </svg>
+                              </a>
+                              {!isTeacher &&
+                                (() => {
+                                  const userId = (session?.user as any)?.id;
+                                  const submissions = Array.isArray(
+                                    (a as any).submissions
+                                  )
+                                    ? (a as any).submissions
+                                    : [];
+                                  const submitted = submissions.some(
+                                    (s: any) => s.studentId === userId
+                                  );
+                                  if (submitted) {
+                                    return (
+                                      <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-semibold">
+                                        Answer Submitted
+                                      </span>
+                                    );
+                                  }
+                                  return (
+                                    <button
+                                      className="px-3 py-1 rounded-full border border-primary text-primary text-xs hover:bg-primary hover:text-white transition bg-white"
+                                      onClick={() =>
+                                        setSubmitAssessmentId(a.id)
+                                      }
+                                    >
+                                      Submit Answer
+                                    </button>
+                                  );
+                                })()}
+                              {isTeacher && (
+                                <button
+                                  className="px-3 py-1 rounded-full border border-accent text-accent text-xs hover:bg-accent hover:text-white transition bg-white"
+                                  onClick={() => setMarkAssessmentId(a.id)}
+                                >
+                                  Mark Assessment
+                                </button>
+                              )}
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
                     )}
                     {/* Videos under lesson */}
                     {lessonDetails[lesson.id]?.videos?.length > 0 && (
@@ -570,6 +832,230 @@ export default function ClassDetailsPage() {
                 Delete
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      {/* Create Assessment Modal */}
+      {showAssessmentModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg p-8 max-w-lg w-full relative">
+            <button
+              className="absolute top-2 right-2 text-gray-500 hover:text-gray-800"
+              onClick={() => setShowAssessmentModal(null)}
+            >
+              &times;
+            </button>
+            <h2 className="text-2xl font-bold mb-4">Create Assessment</h2>
+            <form onSubmit={handleCreateAssessment} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Assessment Name
+                </label>
+                <input
+                  type="text"
+                  name="title"
+                  value={assessmentForm.title}
+                  onChange={handleAssessmentInputChange}
+                  className="input input-bordered w-full"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Deadline
+                </label>
+                <input
+                  type="date"
+                  name="deadline"
+                  value={assessmentForm.deadline}
+                  onChange={handleAssessmentInputChange}
+                  className="input input-bordered w-full"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Assessment PDF
+                </label>
+                <input
+                  type="file"
+                  accept="application/pdf"
+                  name="pdf"
+                  ref={assessmentFileInputRef}
+                  onChange={handleAssessmentFileChange}
+                  className="file-input file-input-bordered w-full"
+                  required
+                />
+              </div>
+              {assessmentError && (
+                <div className="text-red-500 text-sm">{assessmentError}</div>
+              )}
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  className="px-6 py-2 rounded-full border border-gray-300 text-gray-500 shadow-sm hover:border-primary hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all bg-white"
+                  onClick={() => setShowAssessmentModal(null)}
+                  disabled={isAssessmentSubmitting}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-6 py-2 rounded-full border border-primary text-primary shadow-sm hover:bg-primary hover:text-white focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all bg-white"
+                  disabled={isAssessmentSubmitting}
+                >
+                  {isAssessmentSubmitting ? 'Creating...' : 'Create Assessment'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Student Assessment Submission Modal */}
+      {submitAssessmentId && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg p-8 max-w-lg w-full relative">
+            <button
+              className="absolute top-2 right-2 text-gray-500 hover:text-gray-800"
+              onClick={() => setSubmitAssessmentId(null)}
+            >
+              &times;
+            </button>
+            <h2 className="text-2xl font-bold mb-4">Submit Assessment</h2>
+            <form onSubmit={handleSubmitAssessment} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Upload Answer PDF
+                </label>
+                <input
+                  type="file"
+                  accept="application/pdf"
+                  onChange={handleAssessmentFileChangeStudent}
+                  className="file-input file-input-bordered w-full"
+                  required
+                />
+              </div>
+              {submissionError && (
+                <div className="text-red-500 text-sm">{submissionError}</div>
+              )}
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  className="px-6 py-2 rounded-full border border-gray-300 text-gray-500 shadow-sm hover:border-primary hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all bg-white"
+                  onClick={() => setSubmitAssessmentId(null)}
+                  disabled={isSubmittingAssessment}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-6 py-2 rounded-full border border-primary text-primary shadow-sm hover:bg-primary hover:text-white focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all bg-white"
+                  disabled={isSubmittingAssessment}
+                >
+                  {isSubmittingAssessment ? 'Submitting...' : 'Submit'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Teacher Mark Assessment Modal */}
+      {markAssessmentId && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg p-8 max-w-2xl w-full min-w-[500px] min-h-[400px] relative">
+            <button
+              className="absolute top-2 right-2 text-gray-500 hover:text-gray-800"
+              onClick={() => setMarkAssessmentId(null)}
+            >
+              &times;
+            </button>
+            <h2 className="text-2xl font-bold mb-4">Mark Assessment</h2>
+            {assessmentSubmissions.length === 0 ? (
+              <div className="text-gray-500">No submissions yet.</div>
+            ) : (
+              <div className="space-y-6 max-h-[60vh] overflow-y-auto">
+                {assessmentSubmissions.map((sub) => (
+                  <div
+                    key={sub.id}
+                    className="border rounded p-4 bg-gray-50 mb-4"
+                  >
+                    {/* First row: student name left, view submission right */}
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="font-semibold text-lg">
+                        {sub.student?.name || sub.studentId}
+                      </span>
+                      <a
+                        href={sub.pdfUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 underline font-medium hover:text-blue-800 transition"
+                        title="Download Submission"
+                      >
+                        View Submission
+                      </a>
+                    </div>
+                    {/* Second row: grade, feedback, mark button (only if not marked) */}
+                    {!sub.marked && (
+                      <div className="flex flex-col md:flex-row items-center gap-3">
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          placeholder="Grade"
+                          className="input input-bordered input-primary font-semibold text-lg min-w-[100px] md:w-32 focus:ring-2 focus:ring-primary px-4 py-2"
+                          value={grading[sub.id]?.grade || ''}
+                          onChange={(e) =>
+                            handleGradingInput(sub.id, 'grade', e.target.value)
+                          }
+                        />
+                        <input
+                          type="text"
+                          placeholder="Feedback"
+                          className="input input-bordered input-accent font-semibold text-base min-w-[180px] md:w-64 focus:ring-2 focus:ring-accent px-4 py-2"
+                          value={grading[sub.id]?.feedback || ''}
+                          onChange={(e) =>
+                            handleGradingInput(
+                              sub.id,
+                              'feedback',
+                              e.target.value
+                            )
+                          }
+                        />
+                        <button
+                          className="px-6 py-2 rounded-full border-2 border-primary text-primary bg-white ml-0 md:ml-auto mt-2 md:mt-0 transition-colors duration-200 shadow-sm hover:bg-primary hover:text-white focus:outline-none focus:ring-2 focus:ring-primary/30"
+                          style={{ minWidth: '100px', fontWeight: 400 }}
+                          onClick={() => handleMarkSubmission(sub.id)}
+                          disabled={isGrading}
+                        >
+                          {isGrading ? 'Marking...' : 'Mark'}
+                        </button>
+                      </div>
+                    )}
+                    {/* Show grade and feedback if marked */}
+                    {(sub.marked ||
+                      (sub.feedback && sub.feedback.trim() !== '')) && (
+                      <div className="flex flex-wrap gap-3 mt-2">
+                        {sub.marked && (
+                          <span className="inline-block bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-medium">
+                            Grade: {sub.grade}
+                          </span>
+                        )}
+                        {sub.feedback && sub.feedback.trim() !== '' && (
+                          <span className="inline-block bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-medium">
+                            Feedback: {sub.feedback}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+            {gradingError && (
+              <div className="text-red-500 text-sm">{gradingError}</div>
+            )}
           </div>
         </div>
       )}

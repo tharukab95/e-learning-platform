@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { signOut } from 'next-auth/react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+import { useMemo } from 'react';
 
 interface Lesson {
   id: string;
@@ -33,53 +34,116 @@ const mockNotifications = [
 
 export default function StudentDashboard() {
   const { data: session } = useSession();
+  const [allClasses, setAllClasses] = useState<any[]>([]);
   const [enrolledClasses, setEnrolledClasses] = useState<any[]>([]);
-  const [showModal, setShowModal] = useState(false);
-  const [availableClasses, setAvailableClasses] = useState<any[]>([]);
-  const [loadingAvailable, setLoadingAvailable] = useState(false);
+  const [loadingClasses, setLoadingClasses] = useState(true);
   const router = useRouter();
   const token = (session?.user as any)?.access_token;
+  const [upcomingAssessments, setUpcomingAssessments] = useState<any[]>([]);
 
   useEffect(() => {
-    const token = (session?.user as any)?.access_token;
-    if (!token) return;
-    fetch(
-      `${
-        process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
-      }/api/classes/enrolled`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+    const fetchClasses = async () => {
+      const token = (session?.user as any)?.access_token;
+      if (!token) {
+        setAllClasses([]);
+        setEnrolledClasses([]);
+        setLoadingClasses(false);
+        return;
       }
-    )
-      .then((res) => res.json())
-      .then((data) => setEnrolledClasses(Array.isArray(data) ? data : []))
-      .catch(() => setEnrolledClasses([]));
+      setLoadingClasses(true);
+      const [allRes, enrolledRes] = await Promise.all([
+        fetch(
+          `${
+            process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
+          }/api/classes`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        ),
+        fetch(
+          `${
+            process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
+          }/api/classes/enrolled`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        ),
+      ]);
+      const all = allRes.ok ? await allRes.json() : [];
+      const enrolled = enrolledRes.ok ? await enrolledRes.json() : [];
+      setAllClasses(Array.isArray(all) ? all : []);
+      setEnrolledClasses(Array.isArray(enrolled) ? enrolled : []);
+      setLoadingClasses(false);
+    };
+    fetchClasses();
   }, [session?.user]);
 
-  const openEnrollModal = async () => {
-    setShowModal(true);
-    setLoadingAvailable(true);
-    const token = (session?.user as any)?.access_token;
-    if (!token) return;
-    const res = await fetch(
-      `${
-        process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
-      }/api/classes`,
-      {
-        headers: { Authorization: `Bearer ${token}` },
+  // Fetch upcoming assessments for the next 7 days
+  useEffect(() => {
+    const fetchUpcoming = async () => {
+      if (
+        !Array.isArray(enrolledClasses) ||
+        enrolledClasses.length === 0 ||
+        !token
+      ) {
+        setUpcomingAssessments([]);
+        return;
       }
-    );
-    const allClasses = await res.json();
-    // Filter out already enrolled classes
+      const now = new Date();
+      const weekFromNow = new Date();
+      weekFromNow.setDate(now.getDate() + 7);
+      const allUpcoming: any[] = [];
+      for (const c of enrolledClasses) {
+        // Fetch lessons for this class
+        const lessonsRes = await fetch(
+          `${
+            process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
+          }/api/classes/${c.id}/lessons`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        const lessons = lessonsRes.ok ? await lessonsRes.json() : [];
+        for (const lesson of lessons) {
+          // Fetch assessments for this lesson
+          const assessmentsRes = await fetch(
+            `${
+              process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
+            }/api/lessons/${lesson.id}/assessments`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          const assessments = assessmentsRes.ok
+            ? await assessmentsRes.json()
+            : [];
+          for (const a of assessments) {
+            // Only show if not submitted and due in next 7 days
+            const due = new Date(a.deadline);
+            const submitted =
+              Array.isArray(a.submissions) &&
+              a.submissions.some(
+                (s: any) => s.studentId === (session?.user as any)?.id
+              );
+            if (!submitted && due >= now && due <= weekFromNow) {
+              allUpcoming.push({
+                assessmentTitle: a.title,
+                due: due,
+                className: c.title,
+                lessonName: lesson.name,
+              });
+            }
+          }
+        }
+      }
+      // Sort by due date
+      allUpcoming.sort((a, b) => a.due.getTime() - b.due.getTime());
+      setUpcomingAssessments(allUpcoming);
+    };
+    fetchUpcoming();
+  }, [enrolledClasses, token, session?.user]);
+
+  // Compute available classes as allClasses minus enrolledClasses
+  const availableClasses = useMemo(() => {
     const enrolledIds = new Set(enrolledClasses.map((c) => c.id));
-    const available = Array.isArray(allClasses)
-      ? allClasses.filter((c) => !enrolledIds.has(c.id))
-      : [];
-    setAvailableClasses(available);
-    setLoadingAvailable(false);
-  };
+    return allClasses.filter((c) => !enrolledIds.has(c.id));
+  }, [allClasses, enrolledClasses]);
 
   const handleEnroll = async (classId: string) => {
     const token = (session?.user as any)?.access_token;
@@ -93,33 +157,10 @@ export default function StudentDashboard() {
         headers: { Authorization: `Bearer ${token}` },
       }
     );
-    // Refresh enrolled classes
-    setEnrolledClasses((prev) => [
-      ...prev,
-      availableClasses.find((c) => c.id === classId),
-    ]);
-    setShowModal(false);
-  };
-
-  // Fetch lessons for a class when expanded
-  const handleClassClick = async (classId: string) => {
-    if (expandedClass === classId) {
-      setExpandedClass(null);
-      return;
-    }
-    setExpandedClass(classId);
-    if (!classLessons[classId] && token) {
-      const res = await fetch(
-        `${
-          process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
-        }/api/classes/${classId}/lessons`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      if (res.ok) {
-        const lessons = await res.json();
-        setClassLessons((prev) => ({ ...prev, [classId]: lessons }));
-      }
-    }
+    // Refetch classes after enrolling
+    // This will be handled by the useEffect
+    // Optionally, you can force a reload or trigger a state update
+    // For now, do nothing here
   };
 
   return (
@@ -132,76 +173,65 @@ export default function StudentDashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Enrolled Classes */}
+        {/* All Classes (Enrolled and Available) */}
         <div>
-          <h2 className="text-2xl font-bold mb-4">Enrolled Classes</h2>
-          {Array.isArray(enrolledClasses) && enrolledClasses.length === 0 ? (
-            <div className="text-gray-500">No enrolled classes.</div>
+          <h2 className="text-2xl font-bold mb-4">All Classes</h2>
+          {loadingClasses ? (
+            <div>Loading...</div>
+          ) : enrolledClasses.length + availableClasses.length === 0 ? (
+            <div className="text-gray-500">No classes found.</div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {Array.isArray(enrolledClasses) &&
-                enrolledClasses.map((c) => (
-                  <div
-                    key={c.id}
-                    className="cursor-pointer rounded-xl border border-gray-200 shadow hover:border-primary transition-all"
-                    onClick={() => router.push(`/classes/${c.id}`)}
-                  >
-                    <ClassCard classInfo={c} />
-                  </div>
-                ))}
+              {enrolledClasses.map((c) => (
+                <div
+                  key={c.id}
+                  className="cursor-pointer rounded-xl border border-gray-200 shadow hover:border-primary transition-all"
+                  onClick={() => router.push(`/classes/${c.id}`)}
+                >
+                  <ClassCard classInfo={c} enrolled />
+                </div>
+              ))}
+              {availableClasses.map((c) => (
+                <div
+                  key={c.id}
+                  className="rounded-xl border border-gray-200 shadow hover:border-primary transition-all bg-white p-0 flex flex-col justify-between"
+                >
+                  <ClassCard classInfo={c} onEnroll={handleEnroll} />
+                </div>
+              ))}
             </div>
           )}
-          <button className="btn btn-secondary mt-4" onClick={openEnrollModal}>
-            Enroll in a New Class
-          </button>
         </div>
 
         {/* Upcoming Lessons & Assessments */}
         <div>
           <h2 className="text-2xl font-bold mb-4">Upcoming</h2>
-          <ul className="list-disc pl-5 space-y-2">
-            <li>Calculus Lesson 5 - Due: 2024-07-25</li>
-            <li>Physics Assessment 2 - Due: 2024-07-28</li>
-          </ul>
+          {upcomingAssessments.length === 0 ? (
+            <div className="text-gray-500">
+              No upcoming assessments in the next week.
+            </div>
+          ) : (
+            <ul className="list-disc pl-5 space-y-2">
+              {upcomingAssessments.map((a, idx) => (
+                <li key={idx} className="">
+                  <span className="font-semibold">{a.assessmentTitle}</span>{' '}
+                  &mdash;
+                  <span className="text-gray-700">{a.className}</span> /{' '}
+                  <span className="text-gray-700">{a.lessonName}</span>
+                  <span className="ml-2 text-xs text-gray-500">
+                    (Due: {a.due.toLocaleDateString()})
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
-
-      {/* Modal for enrolling in a class */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-lg p-8 max-w-2xl w-full relative">
-            <button
-              className="absolute top-2 right-2 text-gray-500 hover:text-gray-800"
-              onClick={() => setShowModal(false)}
-            >
-              &times;
-            </button>
-            <h2 className="text-2xl font-bold mb-4">Available Classes</h2>
-            {loadingAvailable ? (
-              <div>Loading...</div>
-            ) : availableClasses.length === 0 ? (
-              <div className="text-gray-500">No classes created yet.</div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {availableClasses.map((c) => (
-                  <ClassCard
-                    key={c.id}
-                    classInfo={c}
-                    onEnroll={() => handleEnroll(c.id)}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Recent Notifications */}
       <div>
         <h2 className="text-2xl font-bold mb-4">Recent Notifications</h2>
-        <div className="bg-white rounded shadow">
-          {/* Keep your mockNotifications or fetch real notifications here */}
-        </div>
+        {/* Add notifications here if needed */}
       </div>
     </div>
   );

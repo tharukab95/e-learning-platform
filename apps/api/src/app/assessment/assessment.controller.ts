@@ -8,6 +8,7 @@ import {
   UploadedFile,
   UseGuards,
   UseInterceptors,
+  Patch,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AssessmentService } from './assessment.service';
@@ -40,5 +41,38 @@ export class AssessmentController {
   @Get('lessons/:lessonId/assessments')
   async listAssessments(@Param('lessonId') lessonId: string) {
     return this.assessmentService.listAssessmentsByLesson(lessonId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('assessments/:assessmentId/submit')
+  @UseInterceptors(FileInterceptor('pdf'))
+  async submitAssessment(
+    @Param('assessmentId') assessmentId: string,
+    @Req() req: any,
+    @UploadedFile() file: any
+  ) {
+    return this.assessmentService.submitAssessment(
+      assessmentId,
+      req.user.id,
+      file
+    );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Roles('teacher')
+  @Get('assessments/:assessmentId/submissions')
+  async getAssessmentSubmissions(@Param('assessmentId') assessmentId: string) {
+    return this.assessmentService.getAssessmentSubmissions(assessmentId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Roles('teacher')
+  @Patch('assessments/submissions/:submissionId')
+  async markSubmission(
+    @Param('submissionId') submissionId: string,
+    @Body('grade') grade: number,
+    @Body('feedback') feedback: string
+  ) {
+    return this.assessmentService.markSubmission(submissionId, grade, feedback);
   }
 }

@@ -59,8 +59,10 @@ export class LessonController {
 
   @UseGuards(JwtAuthGuard)
   @Get('lessons/:id/assessments')
-  async getLessonAssessments(@Param('id') id: string) {
-    return this.lessonService.getLessonAssessments(id);
+  async getLessonAssessments(@Param('id') id: string, @Req() req: any) {
+    // Pass userId if available (for students)
+    const userId = req.user?.id;
+    return this.lessonService.getLessonAssessments(id, userId);
   }
 
   @UseGuards(JwtAuthGuard)

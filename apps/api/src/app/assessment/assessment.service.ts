@@ -48,4 +48,52 @@ export class AssessmentService {
       where: { lessonId },
     });
   }
+
+  async submitAssessment(assessmentId: string, studentId: string, file: any) {
+    let pdfUrl = '';
+    if (file) {
+      const s3 = new S3Client({
+        region: process.env.AWS_REGION,
+        credentials: {
+          accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+          secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+        },
+      });
+      const key = `assessment-submissions/${randomUUID()}-${file.originalname}`;
+      await s3.send(
+        new PutObjectCommand({
+          Bucket: process.env.AWS_S3_BUCKET_NAME!,
+          Key: key,
+          Body: file.buffer,
+          ContentType: file.mimetype,
+        })
+      );
+      pdfUrl = `https://${process.env.AWS_S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+    }
+    return this.prisma.assessmentSubmission.create({
+      data: {
+        assessmentId,
+        studentId,
+        pdfUrl,
+      },
+    });
+  }
+
+  async getAssessmentSubmissions(assessmentId: string) {
+    const submissions = await this.prisma.assessmentSubmission.findMany({
+      where: { assessmentId },
+      include: { student: true },
+    });
+    return submissions.map((sub) => ({
+      ...sub,
+      marked: sub.grade !== null && sub.grade !== undefined,
+    }));
+  }
+
+  async markSubmission(submissionId: string, grade: number, feedback: string) {
+    return this.prisma.assessmentSubmission.update({
+      where: { id: submissionId },
+      data: { grade, feedback },
+    });
+  }
 }
