@@ -54,13 +54,12 @@ export function useUpcomingAssessments(
   return useQuery({
     queryKey: ['upcomingAssessments', enrolledClasses, sessionUser],
     queryFn: async () => {
-      const enrolled: any[] = enrolledClasses as any[];
-      if (!Array.isArray(enrolled) || enrolled.length === 0) return [];
+      if (enrolledClasses.length === 0) return [];
       const now = new Date();
       const weekFromNow = new Date();
       weekFromNow.setDate(now.getDate() + 7);
       const allUpcoming: any[] = [];
-      for (const c of enrolled) {
+      for (const c of enrolledClasses) {
         const lessonsRes = await api.get(`/classes/${(c as any).id}/lessons`);
         const lessons = lessonsRes.status === 200 ? lessonsRes.data : [];
         for (const lesson of lessons) {

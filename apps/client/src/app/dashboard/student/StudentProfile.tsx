@@ -1,9 +1,11 @@
+/* eslint-disable @next/next/no-img-element */
 import React from 'react';
 import Skeleton from 'react-loading-skeleton';
+import { User } from '@/types/models';
 
 interface StudentProfileProps {
-  profile: any;
-  profileForm: any;
+  profile: User | null;
+  profileForm: Partial<User>;
   editingProfile: boolean;
   loadingProfile: boolean;
   handleProfileEdit: () => void;

@@ -1,6 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @next/next/no-img-element */
-/* eslint-disable @typescript-eslint/no-empty-function */
 'use client';
 
 import React, { useEffect, useState, useMemo } from 'react';
@@ -179,6 +177,7 @@ export default function StudentDashboard() {
               availableClasses={availableClasses}
               handleEnroll={handleEnroll}
               router={router}
+              loadingClasses={loadingClasses}
             />
             {/* Upcoming Lessons & Assessments */}
             <StudentUpcoming

@@ -1,9 +1,10 @@
 import React from 'react';
 import { FaBell } from 'react-icons/fa';
 import { IoLogOutOutline } from 'react-icons/io5';
+import { Notification } from '@/types/models';
 
 interface StudentHeaderProps {
-  notifications: any[];
+  notifications: Notification[];
   onShowNotifications: () => void;
   showNotifications: boolean;
   onSignOut: () => void;
@@ -34,9 +35,9 @@ const StudentHeader: React.FC<StudentHeaderProps> = ({
           aria-label="Notifications"
         >
           <FaBell className="w-6 h-6 text-white" />
-          {notifications.filter((n: any) => !n.isRead).length > 0 && (
+          {notifications.filter((n) => !n.isRead).length > 0 && (
             <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5">
-              {notifications.filter((n: any) => !n.isRead).length}
+              {notifications.filter((n) => !n.isRead).length}
             </span>
           )}
         </button>
