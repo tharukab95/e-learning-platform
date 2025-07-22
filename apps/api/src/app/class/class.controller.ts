@@ -42,11 +42,4 @@ export class ClassController {
   async getEnrolledClasses(@Req() req: any) {
     return this.classService.getEnrolledClasses(req.user.id);
   }
-
-  @UseGuards(JwtAuthGuard)
-  @Roles('teacher')
-  @Get(':id/progress')
-  async getClassStudentProgress(@Param('id') classId: string) {
-    return this.classService.getClassStudentProgress(classId);
-  }
 }

@@ -77,7 +77,6 @@ export default function TeacherDashboard() {
   const [distinctStudentCount, setDistinctStudentCount] = useState(0);
   const [upcomingAssessments, setUpcomingAssessments] = useState<any[]>([]);
   const [lessonPlanCompletion, setLessonPlanCompletion] = useState<any[]>([]);
-  const [studentProgress, setStudentProgress] = useState<any[]>([]);
   const { data: session } = useSession();
   const router = useRouter();
 
@@ -292,57 +291,6 @@ export default function TeacherDashboard() {
     fetchLessonPlans();
   }, [createdClasses, session?.user]);
 
-  // Fetch student progress for all classes
-  useEffect(() => {
-    const fetchStudentProgress = async () => {
-      const token = (session?.user as any)?.access_token;
-      if (!token || !createdClasses.length) {
-        setStudentProgress([]);
-        return;
-      }
-      const progressMap: Record<
-        string,
-        { name: string; completion: number; lastSubmissionDate: string | null }
-      > = {};
-      for (const c of createdClasses) {
-        const res = await fetch(
-          `${
-            process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
-          }/api/classes/${c.id}/progress`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        if (res.ok) {
-          const data = await res.json();
-          for (const row of data) {
-            const key = row.studentName;
-            if (!progressMap[key]) {
-              progressMap[key] = {
-                name: row.studentName,
-                completion: row.completion,
-                lastSubmissionDate: row.lastSubmissionDate,
-              };
-            } else {
-              // Take the highest completion and latest submission date
-              progressMap[key].completion = Math.max(
-                progressMap[key].completion,
-                row.completion
-              );
-              if (
-                !progressMap[key].lastSubmissionDate ||
-                (row.lastSubmissionDate &&
-                  row.lastSubmissionDate > progressMap[key].lastSubmissionDate)
-              ) {
-                progressMap[key].lastSubmissionDate = row.lastSubmissionDate;
-              }
-            }
-          }
-        }
-      }
-      setStudentProgress(Object.values(progressMap));
-    };
-    fetchStudentProgress();
-  }, [createdClasses, session?.user]);
-
   const onThumbnailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
     setThumbnailFile(file);
@@ -420,9 +368,9 @@ export default function TeacherDashboard() {
       </header>
       {/* Main Content Card */}
       <main className="max-w-6xl mx-auto mt-10 mb-16 px-4">
-        <div className="bg-white/90 rounded-2xl shadow-xl p-8 flex flex-col gap-12">
+        <div className="bg-white/90 rounded-2xl shadow-xl p-8 flex flex-col gap-8">
           {/* Actions */}
-          <div className="flex gap-4 mb-4">
+          <div className="flex gap-2">
             <button
               className="btn bg-gradient-to-r from-blue-600 to-indigo-700 text-white font-semibold rounded-full px-6 py-2 shadow hover:from-blue-700 hover:to-indigo-800 transition"
               onClick={() => setShowModal(true)}
@@ -437,7 +385,7 @@ export default function TeacherDashboard() {
             </button>
           </div>
           {/* Metrics */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-2">
             <div className="rounded-xl bg-gradient-to-br from-indigo-100 to-white shadow p-6 flex flex-col items-center">
               <div className="text-sm font-medium text-indigo-700 mb-1">
                 Enrolled Students
@@ -455,8 +403,33 @@ export default function TeacherDashboard() {
               </div>
             </div>
           </div>
+          {/* Show all created classes with nice card UI */}
+          {createdClasses.length > 0 && (
+            <div className="mt-4">
+              <h2 className="text-xl font-bold mb-4 text-indigo-700">
+                Your Created Classes
+              </h2>
+              <div className="flex flex-wrap gap-4">
+                {createdClasses.map((c) => (
+                  <div key={c.id} className="relative">
+                    <ClassCard
+                      classInfo={c}
+                      onClick={() =>
+                        router.push(`/classes/${c.id}/lesson-plan`)
+                      }
+                    />
+                    <div className="absolute top-2 left-2 bg-indigo-700 text-white text-xs rounded-full px-2 py-0.5 shadow">
+                      {enrollmentCounts[c.id] === 1
+                        ? '1 student'
+                        : `${enrollmentCounts[c.id] ?? 0} students`}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           {/* Lesson Plan Completion Table */}
-          <div className="mt-8">
+          <div className="mt-4">
             <h2 className="text-xl font-bold mb-4 text-indigo-700">
               Lesson Plan Completion
             </h2>
@@ -486,66 +459,6 @@ export default function TeacherDashboard() {
                           : 0}
                         %)
                       </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-          {/* Show all created classes with nice card UI */}
-          {createdClasses.length > 0 && (
-            <div className="mt-8">
-              <h2 className="text-xl font-bold mb-4 text-indigo-700">
-                Your Created Classes
-              </h2>
-              <div className="flex flex-wrap gap-4">
-                {createdClasses.map((c) => (
-                  <div key={c.id} className="relative">
-                    <ClassCard
-                      classInfo={c}
-                      onClick={() =>
-                        router.push(`/classes/${c.id}/lesson-plan`)
-                      }
-                    />
-                    <div className="absolute top-2 left-2 bg-indigo-700 text-white text-xs rounded-full px-2 py-0.5 shadow">
-                      {enrollmentCounts[c.id] === 1
-                        ? '1 student'
-                        : `${enrollmentCounts[c.id] ?? 0} students`}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          {/* Student Progress Table */}
-          <div className="mt-8">
-            <h2 className="text-xl font-bold mb-4 text-indigo-700">
-              Student Progress
-            </h2>
-            <div className="overflow-x-auto rounded-xl shadow">
-              <table className="min-w-full bg-white rounded-xl">
-                <thead>
-                  <tr className="bg-indigo-50">
-                    <th className="py-3 px-4 text-left font-semibold text-indigo-700">
-                      Student Name
-                    </th>
-                    <th className="py-3 px-4 text-left font-semibold text-indigo-700">
-                      Completion
-                    </th>
-                    <th className="py-3 px-4 text-left font-semibold text-indigo-700">
-                      Last Submission Date
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {studentProgress.map((row, idx) => (
-                    <tr
-                      key={idx}
-                      className="border-b last:border-none hover:bg-indigo-50/40 transition"
-                    >
-                      <td className="py-3 px-4">{row.name}</td>
-                      <td className="py-3 px-4">{row.completion}%</td>
-                      <td className="py-3 px-4">{row.lastSubmissionDate}</td>
                     </tr>
                   ))}
                 </tbody>
