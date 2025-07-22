@@ -15,6 +15,7 @@ import { FaBell } from 'react-icons/fa';
 import { IoLogOutOutline } from 'react-icons/io5';
 import { io } from 'socket.io-client';
 import { FaChevronRight } from 'react-icons/fa';
+import api from '@/lib/api';
 
 export default function StudentDashboard() {
   const { data: session } = useSession();
@@ -32,38 +33,17 @@ export default function StudentDashboard() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchClasses = useCallback(async () => {
-    const token = (session?.user as any)?.access_token;
-    if (!token) {
-      setAllClasses([]);
-      setEnrolledClasses([]);
-      setLoadingClasses(false);
-      return;
-    }
     setLoadingClasses(true);
     const [allRes, enrolledRes] = await Promise.all([
-      fetch(
-        `${
-          process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
-        }/api/classes`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      ),
-      fetch(
-        `${
-          process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
-        }/api/classes/enrolled`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      ),
+      api.get('/classes'),
+      api.get('/classes/enrolled'),
     ]);
-    const all = allRes.ok ? await allRes.json() : [];
-    const enrolled = enrolledRes.ok ? await enrolledRes.json() : [];
+    const all = allRes.status === 200 ? allRes.data : [];
+    const enrolled = enrolledRes.status === 200 ? enrolledRes.data : [];
     setAllClasses(Array.isArray(all) ? all : []);
     setEnrolledClasses(Array.isArray(enrolled) ? enrolled : []);
     setLoadingClasses(false);
-  }, [session?.user]);
+  }, []);
 
   useEffect(() => {
     fetchClasses();
@@ -86,24 +66,15 @@ export default function StudentDashboard() {
       const allUpcoming: any[] = [];
       for (const c of enrolledClasses) {
         // Fetch lessons for this class
-        const lessonsRes = await fetch(
-          `${
-            process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
-          }/api/classes/${c.id}/lessons`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        const lessons = lessonsRes.ok ? await lessonsRes.json() : [];
+        const lessonsRes = await api.get(`/classes/${c.id}/lessons`);
+        const lessons = lessonsRes.status === 200 ? lessonsRes.data : [];
         for (const lesson of lessons) {
           // Fetch assessments for this lesson
-          const assessmentsRes = await fetch(
-            `${
-              process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
-            }/api/lessons/${lesson.id}/assessments`,
-            { headers: { Authorization: `Bearer ${token}` } }
+          const assessmentsRes = await api.get(
+            `/lessons/${lesson.id}/assessments`
           );
-          const assessments = assessmentsRes.ok
-            ? await assessmentsRes.json()
-            : [];
+          const assessments =
+            assessmentsRes.status === 200 ? assessmentsRes.data : [];
           for (const a of assessments) {
             // Only show if not submitted and due in next 7 days
             const due = new Date(a.deadline);
@@ -135,15 +106,8 @@ export default function StudentDashboard() {
     const fetchNotifications = async () => {
       const token = (session?.user as any)?.access_token;
       if (!token) return;
-      const res = await fetch(
-        `${
-          process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
-        }/api/notifications`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      const data = await res.json();
+      const res = await api.get('/notifications');
+      const data = res.status === 200 ? res.data : [];
       setNotifications(Array.isArray(data) ? data : []);
     };
     fetchNotifications();
@@ -154,15 +118,8 @@ export default function StudentDashboard() {
     const fetchProfile = async () => {
       const token = (session?.user as any)?.access_token;
       if (!token) return;
-      const res = await fetch(
-        `${
-          process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
-        }/api/users/me`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      const data = await res.json();
+      const res = await api.get('/users/me');
+      const data = res.status === 200 ? res.data : {};
       setProfile(data);
       setProfileForm({ ...data });
     };
@@ -200,21 +157,9 @@ export default function StudentDashboard() {
   const handleProfileSave = async () => {
     const token = (session?.user as any)?.access_token;
     if (!token) return;
-    const res = await fetch(
-      `${
-        process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
-      }/api/users/me`,
-      {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(profileForm),
-      }
-    );
-    if (res.ok) {
-      const data = await res.json();
+    const res = await api.patch('/users/me', profileForm);
+    if (res.status === 200) {
+      const data = res.data;
       setProfile(data);
       setEditingProfile(false);
     }
@@ -227,18 +172,9 @@ export default function StudentDashboard() {
     const token = (session?.user as any)?.access_token;
     const formData = new FormData();
     formData.append('image', file);
-    const res = await fetch(
-      `${
-        process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
-      }/api/users/me/image`,
-      {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
-      }
-    );
-    if (res.ok) {
-      const data = await res.json();
+    const res = await api.post('/users/me/image', formData);
+    if (res.status === 200) {
+      const data = res.data;
       setProfile((prev: any) => ({ ...prev, image: data.image }));
     }
   };
@@ -252,15 +188,7 @@ export default function StudentDashboard() {
   const handleEnroll = async (classId: string) => {
     const token = (session?.user as any)?.access_token;
     if (!token) return;
-    await fetch(
-      `${
-        process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
-      }/api/classes/${classId}/enroll`,
-      {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      }
-    );
+    await api.post(`/classes/${classId}/enroll`);
     // Immediately refetch classes to update UI
     fetchClasses();
   };
@@ -312,16 +240,7 @@ export default function StudentDashboard() {
                         setShowNotifications(false);
                         if (n.id) {
                           const token = (session?.user as any)?.access_token;
-                          await fetch(
-                            `${
-                              process.env.NEXT_PUBLIC_API_URL ||
-                              'http://localhost:3000'
-                            }/api/notifications/${n.id}/read`,
-                            {
-                              method: 'PATCH',
-                              headers: { Authorization: `Bearer ${token}` },
-                            }
-                          );
+                          await api.patch(`/notifications/${n.id}/read`);
                         }
                         if (n.payload?.link) {
                           router.push(n.payload.link);
@@ -539,16 +458,7 @@ export default function StudentDashboard() {
                         className="absolute top-0 left-0 bg-red-500 text-white rounded-full p-1 shadow hover:bg-red-700"
                         onClick={async () => {
                           const token = (session?.user as any)?.access_token;
-                          await fetch(
-                            `${
-                              process.env.NEXT_PUBLIC_API_URL ||
-                              'http://localhost:3000'
-                            }/api/users/me/image`,
-                            {
-                              method: 'DELETE',
-                              headers: { Authorization: `Bearer ${token}` },
-                            }
-                          );
+                          await api.delete('/users/me/image');
                           setProfile((prev: any) => ({ ...prev, image: null }));
                         }}
                         title="Delete Profile Image"
@@ -576,20 +486,9 @@ export default function StudentDashboard() {
                       ref={fileInputRef}
                       onChange={async (e) => {
                         await handleProfileImageChange(e);
-                        const token = (session?.user as any)?.access_token;
-                        if (token) {
-                          const res = await fetch(
-                            `${
-                              process.env.NEXT_PUBLIC_API_URL ||
-                              'http://localhost:3000'
-                            }/api/users/me`,
-                            {
-                              headers: { Authorization: `Bearer ${token}` },
-                            }
-                          );
-                          const data = await res.json();
-                          setProfile(data);
-                        }
+                        const res = await api.get('/users/me');
+                        const data = res.status === 200 ? res.data : {};
+                        setProfile(data);
                       }}
                     />
                   </div>

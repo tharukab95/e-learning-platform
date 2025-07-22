@@ -1,18 +1,12 @@
 'use client';
 
-import React, {
-  useEffect,
-  useState,
-  useCallback,
-  useMemo,
-  useRef,
-} from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import ClassCard from '@/components/ClassCard';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Skeleton from 'react-loading-skeleton';
 import 'react-loading-skeleton/dist/skeleton.css';
-import { IoLogOutOutline } from 'react-icons/io5';
+import api from '@/lib/api';
 
 export default function AllStudentClassesPage() {
   const { data: session } = useSession();
@@ -23,37 +17,17 @@ export default function AllStudentClassesPage() {
   const token = (session?.user as any)?.access_token;
 
   const fetchClasses = useCallback(async () => {
-    if (!token) {
-      setAllClasses([]);
-      setEnrolledClasses([]);
-      setLoadingClasses(false);
-      return;
-    }
     setLoadingClasses(true);
     const [allRes, enrolledRes] = await Promise.all([
-      fetch(
-        `${
-          process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
-        }/api/classes`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      ),
-      fetch(
-        `${
-          process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
-        }/api/classes/enrolled`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      ),
+      api.get('/classes'),
+      api.get('/classes/enrolled'),
     ]);
-    const all = allRes.ok ? await allRes.json() : [];
-    const enrolled = enrolledRes.ok ? await enrolledRes.json() : [];
+    const all = allRes.status === 200 ? allRes.data : [];
+    const enrolled = enrolledRes.status === 200 ? enrolledRes.data : [];
     setAllClasses(Array.isArray(all) ? all : []);
     setEnrolledClasses(Array.isArray(enrolled) ? enrolled : []);
     setLoadingClasses(false);
-  }, [token]);
+  }, []);
 
   useEffect(() => {
     fetchClasses();
@@ -67,15 +41,7 @@ export default function AllStudentClassesPage() {
 
   const handleEnroll = async (classId: string) => {
     if (!token) return;
-    await fetch(
-      `${
-        process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
-      }/api/classes/${classId}/enroll`,
-      {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      }
-    );
+    await api.post(`/classes/${classId}/enroll`);
     fetchClasses();
   };
 

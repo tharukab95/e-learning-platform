@@ -73,14 +73,9 @@ export default function LessonPlanPage() {
   useEffect(() => {
     if (!classId || !token) return;
     setLoading(true);
-    fetch(
-      `${
-        process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
-      }/api/classes/${classId}/lessons`,
-      { headers: { Authorization: `Bearer ${token}` } }
-    )
-      .then((res) => res.json())
-      .then((data) => setLessons(Array.isArray(data) ? data : []))
+    api
+      .get(`/classes/${classId}/lessons`)
+      .then((res) => setLessons(Array.isArray(res.data) ? res.data : []))
       .catch(() => setLessons([]))
       .finally(() => setLoading(false));
   }, [classId, token, showModal, refresh]);
@@ -96,23 +91,11 @@ export default function LessonPlanPage() {
       await Promise.all(
         lessons.map(async (lesson) => {
           const [assessmentsRes, videosRes] = await Promise.all([
-            fetch(
-              `${
-                process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
-              }/api/lessons/${lesson.id}/assessments`,
-              { headers: { Authorization: `Bearer ${token}` } }
-            ),
-            fetch(
-              `${
-                process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
-              }/api/lessons/${lesson.id}/videos`,
-              { headers: { Authorization: `Bearer ${token}` } }
-            ),
+            api.get(`/lessons/${lesson.id}/assessments`),
+            api.get(`/lessons/${lesson.id}/videos`),
           ]);
-          const assessments = assessmentsRes.ok
-            ? await assessmentsRes.json()
-            : [];
-          const videos = videosRes.ok ? await videosRes.json() : [];
+          const assessments = assessmentsRes.data;
+          const videos = videosRes.data;
           details[lesson.id] = { assessments, videos };
         })
       );
@@ -136,14 +119,11 @@ export default function LessonPlanPage() {
     if (markAssessmentId && isTeacher) {
       const fetchSubmissions = async () => {
         const token = (session?.user as any)?.access_token;
-        const res = await fetch(
-          `${
-            process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
-          }/api/assessments/${markAssessmentId}/submissions`,
-          { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+        const res = await api.get(
+          `/assessments/${markAssessmentId}/submissions`
         );
-        if (res.ok) {
-          const data = await res.json();
+        if (res.status === 200) {
+          const data = res.data;
           setAssessmentSubmissions(Array.isArray(data) ? data : []);
         } else {
           setAssessmentSubmissions([]);
@@ -172,20 +152,11 @@ export default function LessonPlanPage() {
     try {
       const { grade, feedback } = grading[submissionId] || {};
       const token = (session?.user as any)?.access_token;
-      const res = await fetch(
-        `${
-          process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
-        }/api/assessments/submissions/${submissionId}`,
-        {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-          body: JSON.stringify({ grade: Number(grade), feedback }),
-        }
-      );
-      if (!res.ok) throw new Error('Failed to mark submission');
+      const res = await api.patch(`/assessments/submissions/${submissionId}`, {
+        grade: Number(grade),
+        feedback,
+      });
+      if (res.status !== 200) throw new Error('Failed to mark submission');
       setAssessmentSubmissions((subs) =>
         subs.map((s) =>
           s.id === submissionId ? { ...s, grade, feedback, marked: true } : s
@@ -213,17 +184,8 @@ export default function LessonPlanPage() {
       formData.append('name', form.name);
       formData.append('description', form.description);
       formData.append('classId', classId);
-      const res = await fetch(
-        `${
-          process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
-        }/api/lessons`,
-        {
-          method: 'POST',
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-          body: formData,
-        }
-      );
-      if (!res.ok) throw new Error('Failed to create lesson');
+      const res = await api.post('/lessons', formData);
+      if (res.status !== 201) throw new Error('Failed to create lesson');
       setShowModal(false);
       setForm({ name: '', description: '' });
       setRefresh((v) => v + 1);
@@ -246,12 +208,7 @@ export default function LessonPlanPage() {
     formData.append('description', editFields.description);
     if (data.pdf && data.pdf[0]) formData.append('pdf', data.pdf[0]);
     // PATCH /lessons/:id to update lesson content
-    return api.patch(`/lessons/${contentModalLesson.id}`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-    });
+    return api.patch(`/lessons/${contentModalLesson.id}`, formData);
   };
   const {
     register: contentRegister,
@@ -682,19 +639,9 @@ export default function LessonPlanPage() {
                   formData.append('lessonId', showAssessmentModal);
                   if (assessmentForm.file)
                     formData.append('pdf', assessmentForm.file);
-                  const res = await fetch(
-                    `${
-                      process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
-                    }/api/assessments`,
-                    {
-                      method: 'POST',
-                      headers: token
-                        ? { Authorization: `Bearer ${token}` }
-                        : {},
-                      body: formData,
-                    }
-                  );
-                  if (!res.ok) throw new Error('Failed to create assessment');
+                  const res = await api.post('/assessments', formData);
+                  if (res.status !== 201)
+                    throw new Error('Failed to create assessment');
                   setShowAssessmentModal(null);
                   setAssessmentForm({ title: '', deadline: '', file: null });
                   setRefresh((v) => v + 1);

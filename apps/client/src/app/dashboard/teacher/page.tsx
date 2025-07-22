@@ -24,11 +24,10 @@ interface CreateClassFormValues {
   thumbnail?: FileList;
 }
 
-const createClass = async (data: FormData, token: string) => {
+const createClass = async (data: FormData) => {
   const response = await api.post('/classes', data, {
     headers: {
       'Content-Type': 'multipart/form-data',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
   });
   return response.data;
@@ -65,8 +64,7 @@ export default function TeacherDashboard() {
     watch,
   } = useForm<CreateClassFormValues>();
   const mutation = useMutation({
-    mutationFn: (data: FormData) =>
-      createClass(data, (session?.user as any)?.access_token),
+    mutationFn: (data: FormData) => createClass(data),
     onSuccess: () => {
       setShowModal(false);
       reset();
@@ -311,18 +309,13 @@ export default function TeacherDashboard() {
 
   const onSubmit = async (formData: FormData) => {
     setIsPending(true);
-    const token = (session?.user as any)?.access_token;
-    // Use the correct endpoint: /api/classes
     const res = await api.post('/classes', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
     });
     if (res.status === 200 || res.status === 201) {
-      const allRes = await api.get('/classes', {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
+      const allRes = await api.get('/classes');
       if (allRes.status === 200) {
         const allClasses = allRes.data;
         setCreatedClasses(Array.isArray(allClasses) ? allClasses : []);

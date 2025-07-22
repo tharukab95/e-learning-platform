@@ -4,6 +4,7 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import ClassCard from '@/components/ClassCard';
+import api from '@/lib/api';
 
 export default function AllCreatedClassesPage() {
   const { data: session } = useSession();
@@ -15,29 +16,17 @@ export default function AllCreatedClassesPage() {
 
   React.useEffect(() => {
     const fetchClasses = async () => {
-      const token = (session?.user as any)?.access_token;
-      if (!token) return;
-      const res = await fetch(
-        `${
-          process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
-        }/api/classes`,
-        { headers: token ? { Authorization: `Bearer ${token}` } : {} }
-      );
-      if (res.ok) {
-        const allClasses = await res.json();
+      const res = await api.get('/classes');
+      if (res.status === 200) {
+        const allClasses = res.data;
         setCreatedClasses(Array.isArray(allClasses) ? allClasses : []);
         // Fetch enrollment counts for each class
         const counts: Record<string, number> = {};
         await Promise.all(
           (Array.isArray(allClasses) ? allClasses : []).map(async (c: any) => {
-            const countRes = await fetch(
-              `${
-                process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
-              }/api/classes/${c.id}/students`,
-              { headers: token ? { Authorization: `Bearer ${token}` } : {} }
-            );
-            if (countRes.ok) {
-              const students = await countRes.json();
+            const countRes = await api.get(`/classes/${c.id}/students`);
+            if (countRes.status === 200) {
+              const students = countRes.data;
               const uniqueIds = new Set(
                 (Array.isArray(students) ? students : []).map(
                   (s: any) => s.studentId || s.id
