@@ -24,7 +24,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
   return (
     <div
       className={
-        'w-full bg-white shadow-lg border border-gray-200 rounded-xl overflow-hidden hover:shadow-xl hover:border-primary transition-all flex flex-col' +
+        'w-full min-w-[220px] bg-white shadow-lg border border-gray-200 rounded-xl overflow-hidden hover:shadow-xl hover:border-primary transition-all flex flex-col' +
         (onClick ? ' cursor-pointer' : '')
       }
       onClick={onClick ? () => onClick(classInfo.id) : undefined}

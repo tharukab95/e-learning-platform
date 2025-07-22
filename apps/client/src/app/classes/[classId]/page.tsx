@@ -8,6 +8,7 @@ import { useState as useToggleState } from 'react';
 import Skeleton from 'react-loading-skeleton';
 import 'react-loading-skeleton/dist/skeleton.css';
 import { useSearchParams } from 'next/navigation';
+import { IoLogOutOutline } from 'react-icons/io5';
 
 interface Lesson {
   id: string;
@@ -464,289 +465,316 @@ export default function ClassDetailsPage() {
   const assessmentRefs = React.useRef<Record<string, HTMLLIElement | null>>({});
 
   return (
-    <div className="p-8 max-w-3xl mx-auto">
-      <button className="btn btn-ghost mb-4" onClick={() => router.back()}>
-        &larr; Back
-      </button>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Class Lessons</h1>
-        {isTeacher && (
-          <button
-            className="btn btn-primary"
-            onClick={() => setShowModal(true)}
-          >
-            + Create Lesson
-          </button>
-        )}
-      </div>
-      {loading ? (
-        <div className="space-y-6">
-          {[...Array(3)].map((_, idx) => (
-            <div
-              key={idx}
-              className="bg-white rounded shadow p-4 mb-2 flex flex-col"
-            >
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex-1">
-                  <Skeleton height={28} width="60%" className="mb-2" />
-                  <Skeleton height={18} width="80%" />
-                </div>
-                <div className="flex items-center gap-2">
-                  <Skeleton circle width={32} height={32} />
-                </div>
-              </div>
-            </div>
-          ))}
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-white">
+      {/* Header NavBar */}
+      <header className="w-full bg-gradient-to-r from-blue-600 to-indigo-700 shadow-md py-4 px-8 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <span className="text-2xl font-bold text-white tracking-tight">
+            E-Learn
+          </span>
+          <span className="ml-4 text-lg text-indigo-100 font-medium">
+            Class Lessons
+          </span>
         </div>
-      ) : lessons.length === 0 ? (
-        <div className="text-gray-500">No lessons created yet.</div>
-      ) : (
-        <div className="space-y-6">
-          {lessons.map((lesson) => {
-            const isExpanded = expandedLesson === lesson.id;
-            console.log(
-              'Rendering lesson',
-              lesson.id,
-              'isExpanded:',
-              isExpanded,
-              'expandedLesson:',
-              expandedLesson
-            );
-            return (
-              <div
-                key={lesson.id}
-                className="bg-white rounded shadow p-4 mb-2 flex flex-col"
+        <button
+          className="ml-2 flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-full transition font-medium"
+          onClick={() => router.push('/dashboard/student')}
+        >
+          <IoLogOutOutline className="w-5 h-5" />
+          Dashboard
+        </button>
+      </header>
+
+      {/* Main Content Card */}
+      <main className="max-w-3xl mx-auto mt-10 mb-16 px-4">
+        <div className="bg-white/90 rounded-2xl shadow-xl p-8 flex flex-col gap-10">
+          <button className="btn btn-ghost mb-4" onClick={() => router.back()}>
+            &larr; Back
+          </button>
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-3xl font-bold text-indigo-800">
+              Class Lessons
+            </h1>
+            {isTeacher && (
+              <button
+                className="btn btn-primary"
+                onClick={() => setShowModal(true)}
               >
+                + Create Lesson
+              </button>
+            )}
+          </div>
+          {loading ? (
+            <div className="space-y-6">
+              {[...Array(3)].map((_, idx) => (
                 <div
-                  className="flex items-center justify-between gap-2 cursor-pointer"
-                  onClick={() =>
-                    setExpandedLesson(isExpanded ? null : lesson.id)
-                  }
+                  key={idx}
+                  className="bg-white rounded-xl shadow p-4 mb-2 flex flex-col"
                 >
-                  <div className="flex-1">
-                    <h2 className="text-xl font-bold mb-1">{lesson.name}</h2>
-                    <p className="text-gray-600 mb-0.5 text-sm">
-                      {lesson.description}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {isTeacher && (
-                      <>
-                        <button
-                          className="p-2 rounded-full hover:bg-gray-100 transition"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openEditModal(lesson);
-                          }}
-                          title="Edit"
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            strokeWidth={1.5}
-                            stroke="currentColor"
-                            className="w-5 h-5 text-primary"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              d="M16.862 4.487a2.1 2.1 0 1 1 2.97 2.97L7.5 19.79l-4 1 1-4 14.362-14.303z"
-                            />
-                          </svg>
-                        </button>
-                        <button
-                          className="p-2 rounded-full hover:bg-gray-100 transition"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDeleteLessonId(lesson.id);
-                          }}
-                          title="Delete"
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            strokeWidth={1.5}
-                            stroke="currentColor"
-                            className="w-5 h-5 text-red-500"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              d="M6 18L18 6M6 6l12 12"
-                            />
-                          </svg>
-                        </button>
-                      </>
-                    )}
-                    <button
-                      className="p-2 rounded-full hover:bg-gray-100 transition"
-                      title={isExpanded ? 'Hide PDF' : 'Show PDF'}
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        strokeWidth={1.5}
-                        stroke="currentColor"
-                        className={`w-6 h-6 transition-transform ${
-                          isExpanded ? 'rotate-180' : ''
-                        }`}
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M19.5 8.25l-7.5 7.5-7.5-7.5"
-                        />
-                      </svg>
-                    </button>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex-1">
+                      <Skeleton height={28} width="60%" className="mb-2" />
+                      <Skeleton height={18} width="80%" />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Skeleton circle width={32} height={32} />
+                    </div>
                   </div>
                 </div>
-                {isExpanded && (
-                  <div className="mt-4 border-t pt-4">
-                    <iframe
-                      src={lesson.pdfUrl}
-                      title="Lesson PDF"
-                      className="w-full h-96 rounded border"
-                    />
-                    {/* Assessments under lesson */}
-                    <div className="mt-4 flex items-center justify-between">
-                      <h3 className="font-semibold mb-1">Assessments</h3>
-                    </div>
-                    {isTeacher && (
-                      <div className="mb-2 flex justify-end">
+              ))}
+            </div>
+          ) : lessons.length === 0 ? (
+            <div className="text-gray-500">No lessons created yet.</div>
+          ) : (
+            <div className="space-y-6">
+              {lessons.map((lesson) => {
+                const isExpanded = expandedLesson === lesson.id;
+                return (
+                  <div
+                    key={lesson.id}
+                    className="bg-white rounded-xl shadow-md p-6 mb-2 flex flex-col border border-gray-100 hover:shadow-lg transition-all"
+                  >
+                    <div
+                      className="flex items-center justify-between gap-2 cursor-pointer"
+                      onClick={() =>
+                        setExpandedLesson(isExpanded ? null : lesson.id)
+                      }
+                    >
+                      <div className="flex-1">
+                        <h2 className="text-xl font-bold text-indigo-900 mb-1">
+                          {lesson.name}
+                        </h2>
+                        <p className="text-gray-600 mb-0.5 text-sm">
+                          {lesson.description}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {isTeacher && (
+                          <>
+                            <button
+                              className="p-2 rounded-full hover:bg-gray-100 transition"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openEditModal(lesson);
+                              }}
+                              title="Edit"
+                            >
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                strokeWidth={1.5}
+                                stroke="currentColor"
+                                className="w-5 h-5 text-primary"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M16.862 4.487a2.1 2.1 0 1 1 2.97 2.97L7.5 19.79l-4 1 1-4 14.362-14.303z"
+                                />
+                              </svg>
+                            </button>
+                            <button
+                              className="p-2 rounded-full hover:bg-gray-100 transition"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeleteLessonId(lesson.id);
+                              }}
+                              title="Delete"
+                            >
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                strokeWidth={1.5}
+                                stroke="currentColor"
+                                className="w-5 h-5 text-red-500"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M6 18L18 6M6 6l12 12"
+                                />
+                              </svg>
+                            </button>
+                          </>
+                        )}
                         <button
-                          className="px-4 py-1 rounded-full border border-primary text-primary shadow-sm hover:bg-primary hover:text-white focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all bg-white text-sm"
-                          onClick={() => {
-                            // console.log(
-                            //   'Clicked create assessment for lesson',
-                            //   lesson.id
-                            // );
-                            setShowAssessmentModal(lesson.id);
-                          }}
+                          className="p-2 rounded-full hover:bg-gray-100 transition"
+                          title={isExpanded ? 'Hide PDF' : 'Show PDF'}
                         >
-                          + Create Assessment
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            strokeWidth={1.5}
+                            stroke="currentColor"
+                            className={`w-6 h-6 transition-transform ${
+                              isExpanded ? 'rotate-180' : ''
+                            }`}
+                          >
+                            {' '}
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M19.5 8.25l-7.5 7.5-7.5-7.5"
+                            />{' '}
+                          </svg>
                         </button>
                       </div>
-                    )}
-                    {lessonDetails[lesson.id]?.assessments?.length > 0 && (
-                      <ul className="list-disc pl-5 mt-2">
-                        {lessonDetails[lesson.id].assessments.map((a) => {
-                          return (
-                            <li
-                              key={a.id}
-                              ref={(el) => {
-                                assessmentRefs.current[a.id] = el;
-                              }}
-                              className={`flex items-center justify-between gap-2 py-1 px-1 transition-all duration-300 ${
-                                a.id === highlightAssessment
-                                  ? 'bg-yellow-100 border-l-8 border-yellow-400 py-3 rounded-md shadow-sm'
-                                  : ''
-                              }`}
+                    </div>
+                    {isExpanded && (
+                      <div className="mt-4 border-t pt-4">
+                        <iframe
+                          src={lesson.pdfUrl}
+                          title="Lesson PDF"
+                          className="w-full h-96 rounded border"
+                        />
+                        {/* Assessments under lesson */}
+                        <div className="mt-4 flex items-center justify-between">
+                          <h3 className="font-semibold mb-1 text-indigo-700">
+                            Assessments
+                          </h3>
+                        </div>
+                        {isTeacher && (
+                          <div className="mb-2 flex justify-end">
+                            <button
+                              className="px-4 py-1 rounded-full border border-primary text-primary shadow-sm hover:bg-primary hover:text-white focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all bg-white text-sm"
+                              onClick={() => setShowAssessmentModal(lesson.id)}
                             >
-                              <div className="flex items-center gap-2">
-                                <span className="font-medium">{a.title}</span>
-                                {a.deadline && (
-                                  <span className="ml-2 text-xs text-gray-500">
-                                    (Due:{' '}
-                                    {new Date(a.deadline).toLocaleDateString()})
-                                  </span>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <a
-                                  href={a.pdfUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="p-2 rounded-full hover:bg-gray-100 transition"
-                                  title="Download Assignment"
+                              + Create Assessment
+                            </button>
+                          </div>
+                        )}
+                        {lessonDetails[lesson.id]?.assessments?.length > 0 && (
+                          <ul className="list-disc pl-5 mt-2">
+                            {lessonDetails[lesson.id].assessments.map((a) => {
+                              return (
+                                <li
+                                  key={a.id}
+                                  ref={(el) => {
+                                    assessmentRefs.current[a.id] = el;
+                                  }}
+                                  className={`flex items-center justify-between gap-2 py-1 px-1 transition-all duration-300 ${
+                                    a.id === highlightAssessment
+                                      ? 'bg-yellow-100 border-l-8 border-yellow-400 py-3 rounded-md shadow-sm'
+                                      : ''
+                                  }`}
                                 >
-                                  <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    strokeWidth={1.5}
-                                    stroke="currentColor"
-                                    className="w-5 h-5"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      d="M12 4.5v11m0 0l-4-4m4 4l4-4m-7 7.5h10.5a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5H4.5A2.25 2.25 0 002.25 6.75v10.5A2.25 2.25 0 004.5 19.5H7"
-                                    />
-                                  </svg>
-                                </a>
-                                {!isTeacher &&
-                                  (() => {
-                                    const userId = (session?.user as any)?.id;
-                                    const submissions = Array.isArray(
-                                      (a as any).submissions
-                                    )
-                                      ? (a as any).submissions
-                                      : [];
-                                    const submitted = submissions.some(
-                                      (s: any) => s.studentId === userId
-                                    );
-                                    if (submitted) {
-                                      return (
-                                        <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-semibold">
-                                          Answer Submitted
-                                        </span>
-                                      );
-                                    }
-                                    return (
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-medium">
+                                      {a.title}
+                                    </span>
+                                    {a.deadline && (
+                                      <span className="ml-2 text-xs text-gray-500">
+                                        (Due:{' '}
+                                        {new Date(
+                                          a.deadline
+                                        ).toLocaleDateString()}
+                                        )
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <a
+                                      href={a.pdfUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="p-2 rounded-full hover:bg-gray-100 transition"
+                                      title="Download Assignment"
+                                    >
+                                      <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        strokeWidth={1.5}
+                                        stroke="currentColor"
+                                        className="w-5 h-5"
+                                      >
+                                        <path
+                                          strokeLinecap="round"
+                                          strokeLinejoin="round"
+                                          d="M12 4.5v11m0 0l-4-4m4 4l4-4m-7 7.5h10.5a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5H4.5A2.25 2.25 0 002.25 6.75v10.5A2.25 2.25 0 004.5 19.5H7"
+                                        />
+                                      </svg>
+                                    </a>
+                                    {!isTeacher &&
+                                      (() => {
+                                        const userId = (session?.user as any)
+                                          ?.id;
+                                        const submissions = Array.isArray(
+                                          (a as any).submissions
+                                        )
+                                          ? (a as any).submissions
+                                          : [];
+                                        const submitted = submissions.some(
+                                          (s: any) => s.studentId === userId
+                                        );
+                                        if (submitted) {
+                                          return (
+                                            <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-semibold">
+                                              Answer Submitted
+                                            </span>
+                                          );
+                                        }
+                                        return (
+                                          <button
+                                            className="px-3 py-1 rounded-full border border-primary text-primary text-xs hover:bg-primary hover:text-white transition bg-white"
+                                            onClick={() =>
+                                              setSubmitAssessmentId(a.id)
+                                            }
+                                          >
+                                            Submit Answer
+                                          </button>
+                                        );
+                                      })()}
+                                    {isTeacher && (
                                       <button
-                                        className="px-3 py-1 rounded-full border border-primary text-primary text-xs hover:bg-primary hover:text-white transition bg-white"
+                                        className="px-3 py-1 rounded-full border border-accent text-accent text-xs hover:bg-accent hover:text-white transition bg-white"
                                         onClick={() =>
-                                          setSubmitAssessmentId(a.id)
+                                          setMarkAssessmentId(a.id)
                                         }
                                       >
-                                        Submit Answer
+                                        Mark Assessment
                                       </button>
-                                    );
-                                  })()}
-                                {isTeacher && (
-                                  <button
-                                    className="px-3 py-1 rounded-full border border-accent text-accent text-xs hover:bg-accent hover:text-white transition bg-white"
-                                    onClick={() => setMarkAssessmentId(a.id)}
+                                    )}
+                                  </div>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        )}
+                        {/* Videos under lesson */}
+                        {lessonDetails[lesson.id]?.videos?.length > 0 && (
+                          <div className="mt-4">
+                            <h3 className="font-semibold mb-1 text-indigo-700">
+                              Videos
+                            </h3>
+                            <ul className="list-disc pl-5">
+                              {lessonDetails[lesson.id].videos.map((v) => (
+                                <li key={v.id}>
+                                  <a
+                                    href={v.s3Url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="link link-secondary"
                                   >
-                                    Mark Assessment
-                                  </button>
-                                )}
-                              </div>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    )}
-                    {/* Videos under lesson */}
-                    {lessonDetails[lesson.id]?.videos?.length > 0 && (
-                      <div className="mt-4">
-                        <h3 className="font-semibold mb-1">Videos</h3>
-                        <ul className="list-disc pl-5">
-                          {lessonDetails[lesson.id].videos.map((v) => (
-                            <li key={v.id}>
-                              <a
-                                href={v.s3Url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="link link-secondary"
-                              >
-                                {v.title}
-                              </a>
-                            </li>
-                          ))}
-                        </ul>
+                                    {v.title}
+                                  </a>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
-                )}
-              </div>
-            );
-          })}
+                );
+              })}
+            </div>
+          )}
         </div>
-      )}
+      </main>
 
       {/* Lesson Creation Modal */}
       {showModal && (
