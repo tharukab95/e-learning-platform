@@ -13,6 +13,8 @@ interface ClassCardProps {
   onEnroll?: (id: string) => void;
   onClick?: (id: string) => void;
   enrolled?: boolean;
+  widthClass?: string;
+  heightClass?: string;
 }
 
 const ClassCard: React.FC<ClassCardProps> = ({
@@ -20,11 +22,13 @@ const ClassCard: React.FC<ClassCardProps> = ({
   onEnroll,
   onClick,
   enrolled,
+  widthClass = 'min-w-[230px] w-full',
+  heightClass = 'h-[270px]',
 }) => {
   return (
     <div
       className={
-        'w-full min-w-[220px] bg-white shadow-lg border border-gray-200 rounded-xl overflow-hidden hover:shadow-xl hover:border-primary transition-all flex flex-col' +
+        `${widthClass} bg-white shadow-lg border border-gray-200 rounded-xl overflow-hidden hover:shadow-xl hover:border-primary transition-all flex flex-col` +
         (onClick ? ' cursor-pointer' : '')
       }
       onClick={onClick ? () => onClick(classInfo.id) : undefined}
@@ -34,11 +38,13 @@ const ClassCard: React.FC<ClassCardProps> = ({
         <img
           src={classInfo.thumbnail}
           alt={classInfo.title}
-          className="object-cover w-full h-[260px] rounded-t-xl"
+          className={`object-cover w-full ${heightClass} rounded-t-xl`}
           style={{ display: 'block' }}
         />
       ) : (
-        <div className="w-full h-40 bg-base-200 flex items-center justify-center rounded-t-xl" />
+        <div
+          className={`w-full ${heightClass} bg-base-200 flex items-center justify-center rounded-t-xl`}
+        />
       )}
       <div className="p-4 flex flex-col justify-between flex-1 min-h-[90px]">
         <h2 className="text-base font-semibold line-clamp-1 mb-0.5">

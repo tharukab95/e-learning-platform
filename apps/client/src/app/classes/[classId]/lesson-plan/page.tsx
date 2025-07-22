@@ -187,7 +187,9 @@ export default function LessonPlanPage() {
       );
       if (!res.ok) throw new Error('Failed to mark submission');
       setAssessmentSubmissions((subs) =>
-        subs.map((s) => (s.id === submissionId ? { ...s, grade, feedback } : s))
+        subs.map((s) =>
+          s.id === submissionId ? { ...s, grade, feedback, marked: true } : s
+        )
       );
     } catch (err: any) {
       setGradingError(err?.message || 'Failed to mark submission');
@@ -521,7 +523,7 @@ export default function LessonPlanPage() {
                   name="name"
                   value={form.name}
                   onChange={handleInputChange}
-                  className="input input-bordered w-full"
+                  className="input input-bordered w-full bg-gray-50 border-2 border-gray-300 focus:border-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary px-3 py-2"
                   required
                 />
               </div>
@@ -533,7 +535,7 @@ export default function LessonPlanPage() {
                   name="description"
                   value={form.description}
                   onChange={handleInputChange}
-                  className="textarea textarea-bordered w-full"
+                  className="textarea textarea-bordered w-full bg-gray-50 border-2 border-gray-300 focus:border-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary px-3 py-2"
                   rows={3}
                   required
                 />

@@ -832,7 +832,7 @@ export default function ClassDetailsPage() {
                   name="name"
                   value={form.name}
                   onChange={handleInputChange}
-                  className="input input-bordered w-full"
+                  className="input input-bordered w-full bg-gray-50 border-2 border-gray-300 focus:border-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary px-3 py-2"
                   required
                 />
               </div>
@@ -844,7 +844,7 @@ export default function ClassDetailsPage() {
                   name="description"
                   value={form.description}
                   onChange={handleInputChange}
-                  className="textarea textarea-bordered w-full"
+                  className="textarea textarea-bordered w-full bg-gray-50 border-2 border-gray-300 focus:border-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary px-3 py-2"
                   rows={3}
                   required
                 />
@@ -859,7 +859,7 @@ export default function ClassDetailsPage() {
                   name="pdf"
                   ref={fileInputRef}
                   onChange={handleFileChange}
-                  className="file-input file-input-bordered w-full"
+                  className="file-input file-input-bordered w-full bg-gray-50 border-2 border-gray-300 focus:border-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary px-3 py-2"
                   required
                 />
               </div>

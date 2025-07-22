@@ -14,6 +14,8 @@ import ClassCard from '@/components/ClassCard';
 import CreateClassModal from './CreateClassModal';
 import { useRouter } from 'next/navigation';
 import { useMemo } from 'react';
+import Link from 'next/link';
+import { FaChevronRight } from 'react-icons/fa';
 
 interface CreateClassFormValues {
   title: string;
@@ -22,9 +24,12 @@ interface CreateClassFormValues {
   thumbnail?: FileList;
 }
 
-const createClass = async (data: FormData) => {
+const createClass = async (data: FormData, token: string) => {
   const response = await api.post('/classes', data, {
-    headers: { 'Content-Type': 'multipart/form-data' },
+    headers: {
+      'Content-Type': 'multipart/form-data',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
   });
   return response.data;
 };
@@ -60,7 +65,8 @@ export default function TeacherDashboard() {
     watch,
   } = useForm<CreateClassFormValues>();
   const mutation = useMutation({
-    mutationFn: createClass,
+    mutationFn: (data: FormData) =>
+      createClass(data, (session?.user as any)?.access_token),
     onSuccess: () => {
       setShowModal(false);
       reset();
@@ -306,27 +312,19 @@ export default function TeacherDashboard() {
   const onSubmit = async (formData: FormData) => {
     setIsPending(true);
     const token = (session?.user as any)?.access_token;
-    const res = await fetch(
-      `${
-        process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
-      }/api/classes`,
-      {
-        method: 'POST',
+    // Use the correct endpoint: /api/classes
+    const res = await api.post('/classes', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (res.status === 200 || res.status === 201) {
+      const allRes = await api.get('/classes', {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
-        body: formData,
-      }
-    );
-    if (res.ok) {
-      const allRes = await fetch(
-        `${
-          process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
-        }/api/classes`,
-        {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        }
-      );
-      if (allRes.ok) {
-        const allClasses = await allRes.json();
+      });
+      if (allRes.status === 200) {
+        const allClasses = allRes.data;
         setCreatedClasses(Array.isArray(allClasses) ? allClasses : []);
       }
       setShowModal(false);
@@ -410,7 +408,7 @@ export default function TeacherDashboard() {
                 Your Created Classes
               </h2>
               <div className="flex flex-wrap gap-4">
-                {createdClasses.map((c) => (
+                {createdClasses.slice(0, 3).map((c) => (
                   <div key={c.id} className="relative">
                     <ClassCard
                       classInfo={c}
@@ -426,6 +424,16 @@ export default function TeacherDashboard() {
                   </div>
                 ))}
               </div>
+              {createdClasses.length > 3 && (
+                <div className="flex justify-end mt-4">
+                  <button
+                    className="flex items-center gap-2 text-indigo-700 font-medium hover:underline hover:text-indigo-900 transition bg-transparent border-none shadow-none px-0 py-0 focus:outline-none"
+                    onClick={() => router.push('/dashboard/teacher/classes')}
+                  >
+                    More <FaChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
             </div>
           )}
           {/* Lesson Plan Completion Table */}

@@ -14,6 +14,7 @@ import { useRef } from 'react';
 import { FaBell } from 'react-icons/fa';
 import { IoLogOutOutline } from 'react-icons/io5';
 import { io } from 'socket.io-client';
+import { FaChevronRight } from 'react-icons/fa';
 
 export default function StudentDashboard() {
   const { data: session } = useSession();
@@ -376,23 +377,46 @@ export default function StudentDashboard() {
                 <div className="text-gray-500">No classes found.</div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {enrolledClasses.map((c) => (
-                    <div
-                      key={c.id}
-                      className="cursor-pointer rounded-xl border border-gray-200 shadow hover:border-primary transition-all bg-gradient-to-br from-indigo-50 to-white"
-                      onClick={() => router.push(`/classes/${c.id}`)}
-                    >
-                      <ClassCard classInfo={c} enrolled />
-                    </div>
-                  ))}
-                  {availableClasses.map((c) => (
-                    <div
-                      key={c.id}
-                      className="rounded-xl border border-gray-200 shadow hover:border-primary transition-all bg-white p-0 flex flex-col justify-between"
-                    >
-                      <ClassCard classInfo={c} onEnroll={handleEnroll} />
-                    </div>
-                  ))}
+                  {(() => {
+                    const allClassCards = [
+                      ...enrolledClasses.map((c) => (
+                        <div
+                          key={c.id}
+                          className="cursor-pointer rounded-xl border border-gray-200 shadow hover:border-primary transition-all bg-gradient-to-br from-indigo-50 to-white"
+                          onClick={() => router.push(`/classes/${c.id}`)}
+                        >
+                          <ClassCard classInfo={c} enrolled />
+                        </div>
+                      )),
+                      ...availableClasses.map((c) => (
+                        <div
+                          key={c.id}
+                          className="rounded-xl border border-gray-200 shadow hover:border-primary transition-all bg-white p-0 flex flex-col justify-between"
+                        >
+                          <ClassCard classInfo={c} onEnroll={handleEnroll} />
+                        </div>
+                      )),
+                    ];
+                    const showMore = allClassCards.length > 4;
+                    return [
+                      ...allClassCards.slice(0, 4),
+                      showMore && (
+                        <div
+                          key="more-btn"
+                          className="flex items-center justify-center col-span-2"
+                        >
+                          <button
+                            className="flex items-center gap-2 text-indigo-700 font-medium hover:underline hover:text-indigo-900 transition bg-transparent border-none shadow-none px-0 py-0 focus:outline-none"
+                            onClick={() =>
+                              router.push('/dashboard/student/classes')
+                            }
+                          >
+                            More <FaChevronRight className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ),
+                    ];
+                  })()}
                 </div>
               )}
             </section>
@@ -439,7 +463,7 @@ export default function StudentDashboard() {
           </div>
 
           {/* Profile Section below classes */}
-          <section className="bg-white/80 rounded-xl shadow p-8 max-w-4xl mx-auto w-full">
+          <section className="bg-white/80 rounded-xl shadow p-8 max-w-4xl mx-auto w-full relative">
             {/* Show skeletons while profile is loading */}
             {!profile ? (
               <div className="flex flex-col items-center mb-4 w-full animate-pulse">
@@ -588,7 +612,7 @@ export default function StudentDashboard() {
                           name="name"
                           value={profileForm.name || ''}
                           onChange={handleProfileChange}
-                          className="input input-bordered w-full"
+                          className="input input-bordered w-full bg-gray-50 border-2 border-gray-300 focus:border-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary px-3 py-2"
                         />
                       </div>
                       <div>
@@ -600,7 +624,7 @@ export default function StudentDashboard() {
                           name="phone"
                           value={profileForm.phone || ''}
                           onChange={handleProfileChange}
-                          className="input input-bordered w-full"
+                          className="input input-bordered w-full bg-gray-50 border-2 border-gray-300 focus:border-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary px-3 py-2"
                         />
                       </div>
                       <div>
@@ -611,7 +635,7 @@ export default function StudentDashboard() {
                           name="address"
                           value={profileForm.address || ''}
                           onChange={handleProfileChange}
-                          className="textarea textarea-bordered w-full"
+                          className="textarea textarea-bordered w-full bg-gray-50 border-2 border-gray-300 focus:border-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary px-3 py-2"
                           rows={2}
                         />
                       </div>
@@ -623,7 +647,7 @@ export default function StudentDashboard() {
                           name="about"
                           value={profileForm.about || ''}
                           onChange={handleProfileChange}
-                          className="textarea textarea-bordered w-full"
+                          className="textarea textarea-bordered w-full bg-gray-50 border-2 border-gray-300 focus:border-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary px-3 py-2"
                           rows={3}
                         />
                       </div>
