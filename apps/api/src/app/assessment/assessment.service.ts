@@ -117,7 +117,7 @@ export class AssessmentService {
       where: { assessmentId },
       include: { student: true },
     });
-    return submissions.map((sub) => ({
+    return submissions.map((sub: any) => ({
       ...sub,
       marked: sub.grade !== null && sub.grade !== undefined,
     }));

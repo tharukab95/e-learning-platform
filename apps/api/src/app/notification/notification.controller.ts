@@ -19,7 +19,7 @@ export class NotificationController {
   @Get()
   async getNotifications(@Req() req: any) {
     return this.prisma.notification.findMany({
-      where: { userId: req.user.id },
+      where: { userId: req.user.id, isRead: false },
       orderBy: { createdAt: 'desc' },
     });
   }

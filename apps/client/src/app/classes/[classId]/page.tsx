@@ -117,7 +117,10 @@ export default function ClassDetailsPage() {
     console.log('highlightLessonId:', highlightLessonId);
     console.log('allLessonDetailsLoaded:', allLessonDetailsLoaded);
     if (highlightLessonId) {
-      console.log('lessonDetails[highlightLessonId]:', lessonDetails[highlightLessonId]);
+      console.log(
+        'lessonDetails[highlightLessonId]:',
+        lessonDetails[highlightLessonId]
+      );
     }
     if (
       highlightLessonId &&
@@ -501,7 +504,14 @@ export default function ClassDetailsPage() {
         <div className="space-y-6">
           {lessons.map((lesson) => {
             const isExpanded = expandedLesson === lesson.id;
-            console.log('Rendering lesson', lesson.id, 'isExpanded:', isExpanded, 'expandedLesson:', expandedLesson);
+            console.log(
+              'Rendering lesson',
+              lesson.id,
+              'isExpanded:',
+              isExpanded,
+              'expandedLesson:',
+              expandedLesson
+            );
             return (
               <div
                 key={lesson.id}
@@ -629,9 +639,9 @@ export default function ClassDetailsPage() {
                               ref={(el) => {
                                 assessmentRefs.current[a.id] = el;
                               }}
-                              className={`flex items-center justify-between gap-2 py-1 ${
+                              className={`flex items-center justify-between gap-2 py-1 px-1 transition-all duration-300 ${
                                 a.id === highlightAssessment
-                                  ? 'bg-yellow-100 border-l-4 border-yellow-400'
+                                  ? 'bg-yellow-100 border-l-8 border-yellow-400 py-3 rounded-md shadow-sm'
                                   : ''
                               }`}
                             >
