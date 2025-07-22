@@ -2,15 +2,63 @@
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import Link from 'next/link';
+import axios from 'axios';
+import { signIn } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 
 export default function SignupPage() {
   const { register, handleSubmit, reset } = useForm();
   const [success, setSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
-  const onSubmit = (data: any) => {
-    // In a real app, send data to backend here
-    setSuccess(true);
-    reset();
+  const onSubmit = async (data: any) => {
+    setError(null);
+    setSuccess(false);
+    try {
+      const res = await axios.post(
+        `${
+          process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
+        }/api/auth/signup`,
+        {
+          name: data.name,
+          email: data.email,
+          password: data.password,
+          role: data.role,
+        },
+        {
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
+      if (res.status === 201 || res.status === 200) {
+        // Auto-login after signup
+        const loginRes = await signIn('credentials', {
+          redirect: false,
+          email: data.email,
+          password: data.password,
+        });
+        if (loginRes?.ok) {
+          // Get the session to check the role
+          const sessionRes = await fetch('/api/auth/session');
+          const session = await sessionRes.json();
+          const role = session?.user?.role;
+          if (role === 'teacher') {
+            router.push('/dashboard/teacher');
+          } else if (role === 'student') {
+            router.push('/dashboard/student');
+          } else {
+            router.push('/dashboard');
+          }
+        } else {
+          setSuccess(true);
+          reset();
+        }
+      } else {
+        setError('Signup failed.');
+      }
+    } catch (err: any) {
+      setError(err?.response?.data?.message || 'Signup failed.');
+    }
   };
 
   return (
@@ -25,34 +73,20 @@ export default function SignupPage() {
             Signup successful! (Demo only)
           </div>
         )}
+        {error && <div className="mb-4 text-red-600 text-center">{error}</div>}
         <div className="mb-4">
           <label
             className="block text-gray-700 text-sm font-bold mb-2"
-            htmlFor="firstname"
+            htmlFor="name"
           >
-            First Name
+            Name
           </label>
           <input
-            {...register('firstname', { required: true })}
+            {...register('name', { required: true })}
             className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-            id="firstname"
+            id="name"
             type="text"
-            placeholder="First Name"
-          />
-        </div>
-        <div className="mb-4">
-          <label
-            className="block text-gray-700 text-sm font-bold mb-2"
-            htmlFor="lastname"
-          >
-            Last Name
-          </label>
-          <input
-            {...register('lastname', { required: true })}
-            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-            id="lastname"
-            type="text"
-            placeholder="Last Name"
+            placeholder="Name"
           />
         </div>
         <div className="mb-4">

@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "nx run-many --target=serve --parallel --projects=client,api",
     "build": "nx run-many --target=build --parallel --projects=client,api",
-    "start:prod": "node dist/apps/api/main.js & serve -s dist/apps/client"
+    "start:prod": "node dist/apps/api/main.js & serve -s dist/apps/client",
+    "prisma:migrate": "npx prisma migrate dev --schema=apps/api/prisma/schema.prisma --name init"
   },
   "private": true,
   "dependencies": {

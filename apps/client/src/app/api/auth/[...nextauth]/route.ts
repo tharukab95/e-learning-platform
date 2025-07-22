@@ -1,32 +1,19 @@
 import NextAuth from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { NextAuthOptions } from 'next-auth';
+import axios from 'axios';
 
 // Remove module augmentation for Session
 
 declare module 'next-auth/jwt' {
   interface JWT {
     role?: string;
+    access_token?: string;
   }
 }
 
-// Example user store (replace with real DB/API in production)
-const users = [
-  {
-    id: '1',
-    email: 'teacher@example.com',
-    password: 'password',
-    role: 'teacher',
-  },
-  {
-    id: '2',
-    email: 'student@example.com',
-    password: 'password',
-    role: 'student',
-  },
-];
-
 export const authOptions: NextAuthOptions = {
+  secret: process.env.NEXTAUTH_SECRET,
   providers: [
     CredentialsProvider({
       name: 'Credentials',
@@ -39,15 +26,27 @@ export const authOptions: NextAuthOptions = {
         password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials) {
-        const user = users.find(
-          (u) =>
-            u.email === credentials?.email &&
-            u.password === credentials?.password
-        );
-        if (user) {
-          return { id: user.id, email: user.email, role: user.role };
+        try {
+          const res = await axios.post(
+            `${
+              process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
+            }/api/auth/login`,
+            {
+              email: credentials?.email,
+              password: credentials?.password,
+            },
+            {
+              headers: { 'Content-Type': 'application/json' },
+            }
+          );
+          const { user, access_token } = res.data;
+          if (user && access_token) {
+            return { ...user, access_token };
+          }
+          return null;
+        } catch (err) {
+          return null;
         }
-        return null;
       },
     }),
   ],
@@ -58,13 +57,24 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.role = (user as { role?: string }).role;
+        token.access_token = (user as { access_token?: string }).access_token;
       }
       return token;
     },
     async session({ session, token }) {
       if (token && session.user) {
-        (session.user as typeof session.user & { role?: string }).role =
-          token.role as string;
+        (
+          session.user as typeof session.user & {
+            role?: string;
+            access_token?: string;
+          }
+        ).role = token.role as string;
+        (
+          session.user as typeof session.user & {
+            role?: string;
+            access_token?: string;
+          }
+        ).access_token = token.access_token as string;
       }
       return session;
     },
