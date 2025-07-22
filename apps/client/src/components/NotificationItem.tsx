@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import React from "react";
+import React, { useEffect, useState } from 'react';
 
 interface NotificationItemProps {
   notification: {
@@ -16,17 +16,21 @@ const NotificationItem: React.FC<NotificationItemProps> = ({
   notification,
   onClick,
 }) => {
+  const [formattedDate, setFormattedDate] = useState<string>('');
+
+  useEffect(() => {
+    setFormattedDate(new Date(notification.timestamp).toLocaleString());
+  }, [notification.timestamp]);
+
   return (
     <div
       onClick={() => onClick(notification.id)}
       className={`p-4 border-b cursor-pointer ${
-        notification.isRead ? "bg-white" : "bg-blue-100 font-bold"
+        notification.isRead ? 'bg-white' : 'bg-blue-100 font-bold'
       }`}
     >
       <p>{notification.message}</p>
-      <p className="text-sm text-gray-500">
-        {new Date(notification.timestamp).toLocaleString()}
-      </p>
+      <p className="text-sm text-gray-500">{formattedDate}</p>
     </div>
   );
 };

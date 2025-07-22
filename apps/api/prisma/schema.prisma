@@ -37,6 +37,7 @@ model Class {
   enrollments ClassEnrollment[]
   videos    Video[]
   assessments Assessment[]
+  thumbnail  String? // S3 image URL
 }
 
 model ClassEnrollment {

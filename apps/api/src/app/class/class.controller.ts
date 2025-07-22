@@ -1,4 +1,14 @@
-import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Post,
+  Req,
+  UseGuards,
+  UploadedFile,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ClassService } from './class.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -10,14 +20,17 @@ export class ClassController {
   @UseGuards(JwtAuthGuard)
   @Roles('teacher')
   @Post()
+  @UseInterceptors(FileInterceptor('thumbnail'))
   async createClass(
     @Body('title') title: string,
     @Body('subject') subject: string,
-    @Req() req: any
+    @Req() req: any,
+    @UploadedFile() file: any
   ) {
-    return this.classService.createClass(title, subject, req.user.id);
+    return this.classService.createClass(title, subject, req.user.id, file);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Get()
   async listClasses() {
     return this.classService.listClasses();
