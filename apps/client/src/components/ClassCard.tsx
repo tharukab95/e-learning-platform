@@ -11,11 +11,22 @@ interface ClassCardProps {
     thumbnail?: string;
   };
   onEnroll?: (id: string) => void;
+  onClick?: (id: string) => void;
 }
 
-const ClassCard: React.FC<ClassCardProps> = ({ classInfo, onEnroll }) => {
+const ClassCard: React.FC<ClassCardProps> = ({
+  classInfo,
+  onEnroll,
+  onClick,
+}) => {
   return (
-    <div className="w-[200px] bg-white shadow-lg border border-gray-200 rounded-xl overflow-hidden hover:shadow-xl hover:border-primary transition-all flex flex-col">
+    <div
+      className={
+        'w-[200px] bg-white shadow-lg border border-gray-200 rounded-xl overflow-hidden hover:shadow-xl hover:border-primary transition-all flex flex-col' +
+        (onClick ? ' cursor-pointer' : '')
+      }
+      onClick={onClick ? () => onClick(classInfo.id) : undefined}
+    >
       {classInfo.thumbnail && (
         <div className="w-full h-[270px] bg-base-200 flex items-center justify-center">
           <img

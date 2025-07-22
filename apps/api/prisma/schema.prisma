@@ -35,8 +35,7 @@ model Class {
   teacher   User     @relation("TeacherClasses", fields: [teacherId], references: [id])
   teacherId String
   enrollments ClassEnrollment[]
-  videos    Video[]
-  assessments Assessment[]
+  lessons    Lesson[]
   thumbnail  String? // S3 image URL
 }
 
@@ -53,8 +52,8 @@ model Video {
   title     String
   s3Url     String
   hlsPath   String
-  class     Class    @relation(fields: [classId], references: [id])
-  classId   String
+  lesson    Lesson   @relation(fields: [lessonId], references: [id])
+  lessonId  String
   progress  Progress[]
 }
 
@@ -68,11 +67,12 @@ model Progress {
 }
 
 model Assessment {
-  id        String   @id @default(cuid())
-  title     String
-  pdfUrl    String
-  class     Class    @relation(fields: [classId], references: [id])
-  classId   String
+  id          String   @id @default(cuid())
+  title       String
+  pdfUrl      String
+  deadline    DateTime
+  lesson      Lesson   @relation(fields: [lessonId], references: [id])
+  lessonId    String
   submissions AssessmentSubmission[]
 }
 
@@ -95,4 +95,15 @@ model Notification {
   payload   Json
   isRead    Boolean  @default(false)
   createdAt DateTime @default(now())
+}
+
+model Lesson {
+  id          String      @id @default(cuid())
+  name        String
+  description String
+  pdfUrl      String
+  class       Class       @relation(fields: [classId], references: [id])
+  classId     String
+  videos      Video[]
+  assessments Assessment[]
 }

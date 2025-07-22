@@ -6,6 +6,8 @@ import { UserModule } from './user/user.module';
 import { AuthModule } from './auth/auth.module';
 import { ClassModule } from './class/class.module';
 import { EnrollmentModule } from './enrollment/enrollment.module';
+import { LessonModule } from './lesson/lesson.module';
+import { AssessmentModule } from './assessment/assessment.module';
 
 @Module({
   imports: [
@@ -14,6 +16,8 @@ import { EnrollmentModule } from './enrollment/enrollment.module';
     AuthModule,
     ClassModule,
     EnrollmentModule,
+    LessonModule,
+    AssessmentModule,
   ],
   controllers: [AppController],
   providers: [AppService],

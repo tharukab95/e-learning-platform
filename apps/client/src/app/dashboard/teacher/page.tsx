@@ -12,6 +12,7 @@ import api from '@/lib/api';
 import { useSession } from 'next-auth/react';
 import ClassCard from '@/components/ClassCard';
 import CreateClassModal from './CreateClassModal';
+import { useRouter } from 'next/navigation';
 
 interface CreateClassFormValues {
   title: string;
@@ -73,6 +74,7 @@ export default function TeacherDashboard() {
     Record<string, number>
   >({});
   const { data: session } = useSession();
+  const router = useRouter();
 
   // Fetch all created classes on mount
   React.useEffect(() => {
@@ -214,7 +216,10 @@ export default function TeacherDashboard() {
           <div className="flex flex-wrap gap-4">
             {createdClasses.map((c) => (
               <div key={c.id} className="relative">
-                <ClassCard classInfo={c} />
+                <ClassCard
+                  classInfo={c}
+                  onClick={() => router.push(`/classes/${c.id}`)}
+                />
                 <div className="absolute top-2 left-2 bg-teal-700 text-white text-xs rounded-full px-2 py-0.5 shadow">
                   {enrollmentCounts[c.id] === 1
                     ? '1 student'

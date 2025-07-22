@@ -7,6 +7,14 @@ import NotificationItem from '@/components/NotificationItem';
 import Link from 'next/link';
 import { signOut } from 'next-auth/react';
 import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+
+interface Lesson {
+  id: string;
+  name: string;
+  description: string;
+  pdfUrl: string;
+}
 
 const mockNotifications = [
   {
@@ -29,6 +37,8 @@ export default function StudentDashboard() {
   const [showModal, setShowModal] = useState(false);
   const [availableClasses, setAvailableClasses] = useState<any[]>([]);
   const [loadingAvailable, setLoadingAvailable] = useState(false);
+  const router = useRouter();
+  const token = (session?.user as any)?.access_token;
 
   useEffect(() => {
     const token = (session?.user as any)?.access_token;
@@ -91,6 +101,27 @@ export default function StudentDashboard() {
     setShowModal(false);
   };
 
+  // Fetch lessons for a class when expanded
+  const handleClassClick = async (classId: string) => {
+    if (expandedClass === classId) {
+      setExpandedClass(null);
+      return;
+    }
+    setExpandedClass(classId);
+    if (!classLessons[classId] && token) {
+      const res = await fetch(
+        `${
+          process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
+        }/api/classes/${classId}/lessons`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (res.ok) {
+        const lessons = await res.json();
+        setClassLessons((prev) => ({ ...prev, [classId]: lessons }));
+      }
+    }
+  };
+
   return (
     <div className="p-8 space-y-8">
       <div className="flex justify-between items-center">
@@ -110,7 +141,13 @@ export default function StudentDashboard() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {Array.isArray(enrolledClasses) &&
                 enrolledClasses.map((c) => (
-                  <ClassCard key={c.id} classInfo={c} />
+                  <div
+                    key={c.id}
+                    className="cursor-pointer rounded-xl border border-gray-200 shadow hover:border-primary transition-all"
+                    onClick={() => router.push(`/classes/${c.id}`)}
+                  >
+                    <ClassCard classInfo={c} />
+                  </div>
                 ))}
             </div>
           )}

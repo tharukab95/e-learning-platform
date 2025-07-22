@@ -35,4 +35,10 @@ export class ClassController {
   async listClasses() {
     return this.classService.listClasses();
   }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('enrolled')
+  async getEnrolledClasses(@Req() req: any) {
+    return this.classService.getEnrolledClasses(req.user.id);
+  }
 }

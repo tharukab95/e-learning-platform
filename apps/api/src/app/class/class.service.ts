@@ -47,4 +47,16 @@ export class ClassService {
   async getClassById(id: string): Promise<Class | null> {
     return this.prisma.class.findUnique({ where: { id } });
   }
+
+  async getEnrolledClasses(studentId: string): Promise<Class[]> {
+    return this.prisma.class.findMany({
+      where: {
+        enrollments: {
+          some: {
+            studentId,
+          },
+        },
+      },
+    });
+  }
 }
