@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-empty-function */
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import ClassCard from '@/components/ClassCard';
 import { signOut } from 'next-auth/react';
 import { useSession } from 'next-auth/react';
@@ -30,42 +30,43 @@ export default function StudentDashboard() {
   const [profileForm, setProfileForm] = useState<any>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    const fetchClasses = async () => {
-      const token = (session?.user as any)?.access_token;
-      if (!token) {
-        setAllClasses([]);
-        setEnrolledClasses([]);
-        setLoadingClasses(false);
-        return;
-      }
-      setLoadingClasses(true);
-      const [allRes, enrolledRes] = await Promise.all([
-        fetch(
-          `${
-            process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
-          }/api/classes`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        ),
-        fetch(
-          `${
-            process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
-          }/api/classes/enrolled`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        ),
-      ]);
-      const all = allRes.ok ? await allRes.json() : [];
-      const enrolled = enrolledRes.ok ? await enrolledRes.json() : [];
-      setAllClasses(Array.isArray(all) ? all : []);
-      setEnrolledClasses(Array.isArray(enrolled) ? enrolled : []);
+  const fetchClasses = useCallback(async () => {
+    const token = (session?.user as any)?.access_token;
+    if (!token) {
+      setAllClasses([]);
+      setEnrolledClasses([]);
       setLoadingClasses(false);
-    };
-    fetchClasses();
+      return;
+    }
+    setLoadingClasses(true);
+    const [allRes, enrolledRes] = await Promise.all([
+      fetch(
+        `${
+          process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
+        }/api/classes`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      ),
+      fetch(
+        `${
+          process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
+        }/api/classes/enrolled`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      ),
+    ]);
+    const all = allRes.ok ? await allRes.json() : [];
+    const enrolled = enrolledRes.ok ? await enrolledRes.json() : [];
+    setAllClasses(Array.isArray(all) ? all : []);
+    setEnrolledClasses(Array.isArray(enrolled) ? enrolled : []);
+    setLoadingClasses(false);
   }, [session?.user]);
+
+  useEffect(() => {
+    fetchClasses();
+  }, [fetchClasses]);
 
   // Fetch upcoming assessments for the next 7 days
   useEffect(() => {
@@ -259,10 +260,8 @@ export default function StudentDashboard() {
         headers: { Authorization: `Bearer ${token}` },
       }
     );
-    // Refetch classes after enrolling
-    // This will be handled by the useEffect
-    // Optionally, you can force a reload or trigger a state update
-    // For now, do nothing here
+    // Immediately refetch classes to update UI
+    fetchClasses();
   };
 
   return (
@@ -418,18 +417,20 @@ export default function StudentDashboard() {
               ) : (
                 <ul className="list-disc pl-5 space-y-2">
                   {upcomingAssessments.map((a, idx) => (
-                    <li key={idx} className="">
-                      <span className="font-semibold text-indigo-800">
-                        {a.assessmentTitle}
-                      </span>{' '}
-                      &mdash;
-                      <span className="text-gray-700">
-                        {a.className}
-                      </span> /{' '}
-                      <span className="text-gray-700">{a.lessonName}</span>
-                      <span className="ml-2 text-xs text-gray-500">
-                        (Due: {a.due.toLocaleDateString()})
-                      </span>
+                    <li key={idx} className="mb-2">
+                      <div>
+                        <span className="font-semibold text-indigo-800">
+                          {a.assessmentTitle}
+                        </span>{' '}
+                        &mdash;
+                        <span className="text-gray-700">
+                          {a.className}
+                        </span> /{' '}
+                        <span className="text-gray-700">{a.lessonName}</span>
+                      </div>
+                      <div className="ml-2 text-xs text-gray-500 mt-1">
+                        Due: {a.due.toLocaleDateString()}
+                      </div>
                     </li>
                   ))}
                 </ul>
