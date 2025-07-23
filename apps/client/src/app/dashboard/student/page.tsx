@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import { signOut } from 'next-auth/react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
@@ -22,6 +22,7 @@ import {
   useEnrollClass,
   useMarkNotificationRead,
   useDeleteProfileImage,
+  useAvailableClasses,
 } from './studentDashboardQueries';
 
 export default function StudentDashboard() {
@@ -31,7 +32,7 @@ export default function StudentDashboard() {
   const userId = (session?.user as any)?.id;
 
   // Classes
-  const { data: allClasses = [], isLoading: loadingClasses } = useAllClasses();
+  const { isLoading: loadingClasses } = useAllClasses();
   const { data: enrolledClasses = [] } = useEnrolledClasses();
 
   // Notifications
@@ -43,6 +44,7 @@ export default function StudentDashboard() {
   const { data: profile, isLoading: loadingProfile } = useProfile();
   const [editingProfile, setEditingProfile] = useState(false);
   const [profileForm, setProfileForm] = useState<any>({});
+
   React.useEffect(() => {
     if (profile) setProfileForm({ ...profile });
   }, [profile]);
@@ -50,22 +52,15 @@ export default function StudentDashboard() {
   // Upcoming Assessments
   const { data: upcomingAssessments = [] } = useUpcomingAssessments(userId);
 
+  // Available Classes
+  const { data: availableClasses = [] } = useAvailableClasses();
+
   // Mutations
   const updateProfile = useUpdateProfile();
   const uploadProfileImage = useUploadProfileImage();
   const enrollClass = useEnrollClass();
   const markNotificationRead = useMarkNotificationRead(refetchNotifications);
   const deleteProfileImage = useDeleteProfileImage();
-
-  // Compute available classes as allClasses minus enrolledClasses
-  const availableClasses = useMemo(() => {
-    const enrolledIds = new Set(
-      (enrolledClasses as any[]).map((c: any) => c.id)
-    );
-    return (allClasses as any[]).filter(
-      (c: any): boolean => !enrolledIds.has(c.id)
-    );
-  }, [allClasses, enrolledClasses]);
 
   // Handlers
   const handleProfileEdit = () => setEditingProfile(true);

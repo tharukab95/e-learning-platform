@@ -58,4 +58,16 @@ export class ClassService {
       },
     });
   }
+
+  async getAvailableClasses(studentId: string): Promise<any[]> {
+    return this.prisma.class.findMany({
+      where: {
+        enrollments: {
+          none: {
+            studentId,
+          },
+        },
+      },
+    });
+  }
 }

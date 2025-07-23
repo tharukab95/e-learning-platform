@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import NextAuth from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { NextAuthOptions } from 'next-auth';
@@ -65,22 +66,9 @@ export const authOptions: NextAuthOptions = {
     },
     async session({ session, token }) {
       if (token && session.user) {
-        (
-          session.user as typeof session.user & {
-            role?: string;
-            access_token?: string;
-            id?: string;
-          }
-        ).role = token.role as string;
-        (
-          session.user as typeof session.user & {
-            role?: string;
-            access_token?: string;
-            id?: string;
-          }
-        ).access_token = token.access_token as string;
-        // Add user id to session.user
-        (session.user as any).id = (token as any).id;
+        session.user.role = token.role as string;
+        session.user.access_token = token.access_token as string;
+        session.user.id = (token as any).id;
       }
       return session;
     },

@@ -22,6 +22,16 @@ export function useEnrolledClasses() {
   });
 }
 
+export function useAvailableClasses() {
+  return useQuery({
+    queryKey: ['availableClasses'],
+    queryFn: async () => {
+      const res = await api.get('/classes/available');
+      return res.status === 200 ? res.data : [];
+    },
+  });
+}
+
 // Notifications
 export function useNotifications() {
   return useQuery({

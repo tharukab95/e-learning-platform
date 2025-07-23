@@ -43,6 +43,11 @@ export class ClassController {
     return this.classService.getEnrolledClasses(req.user.id);
   }
 
+  @Get('available')
+  async getAvailableClasses(@Req() req: any) {
+    return this.classService.getAvailableClasses(req.user.id);
+  }
+
   @Get(':id/lessons')
   async getClassLessons(@Param('id') id: string) {
     return this.lessonService.listLessonsByClass(id);
