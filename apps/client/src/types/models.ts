@@ -45,3 +45,13 @@ export interface User {
   image?: string;
   about?: string;
 }
+
+export interface Submission {
+  id: string;
+  studentId: string;
+  assessmentId: string;
+  pdfUrl: string;
+  grade?: number;
+  feedback?: string;
+  createdAt: string;
+}

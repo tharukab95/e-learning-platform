@@ -129,4 +129,45 @@ export class AssessmentService {
       data: { grade, feedback },
     });
   }
+
+  async getStudentUpcomingAssessments(studentId: string) {
+    // Get all classes the student is enrolled in
+    const enrolledClasses = await this.prisma.class.findMany({
+      where: {
+        enrollments: {
+          some: { studentId },
+        },
+      },
+      include: {
+        lessons: {
+          include: { assessments: { include: { submissions: true } } },
+        },
+      },
+    });
+    const now = new Date();
+    const weekFromNow = new Date();
+    weekFromNow.setDate(now.getDate() + 7);
+    const upcoming: any[] = [];
+    for (const c of enrolledClasses) {
+      for (const lesson of c.lessons) {
+        for (const a of lesson.assessments) {
+          const due = new Date(a.deadline);
+          const submitted =
+            Array.isArray(a.submissions) &&
+            a.submissions.some((s: any) => s.studentId === studentId);
+          if (!submitted && due >= now && due <= weekFromNow) {
+            upcoming.push({
+              ...a,
+              className: c.title,
+              lessonName: lesson.name,
+            });
+          }
+        }
+      }
+    }
+    upcoming.sort(
+      (a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime()
+    );
+    return upcoming;
+  }
 }

@@ -63,4 +63,9 @@ export class AssessmentController {
   ) {
     return this.assessmentService.markSubmission(submissionId, grade, feedback);
   }
+
+  @Get('students/:studentId/upcoming-assessments')
+  async getStudentUpcomingAssessments(@Param('studentId') studentId: string) {
+    return this.assessmentService.getStudentUpcomingAssessments(studentId);
+  }
 }

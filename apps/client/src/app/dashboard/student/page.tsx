@@ -22,7 +22,7 @@ import {
   useEnrollClass,
   useMarkNotificationRead,
   useDeleteProfileImage,
-} from './dashboardQueries';
+} from './studentDashboardQueries';
 
 export default function StudentDashboard() {
   const { data: session } = useSession();
@@ -48,11 +48,7 @@ export default function StudentDashboard() {
   }, [profile]);
 
   // Upcoming Assessments
-  const { data: upcomingAssessments = [] } = useUpcomingAssessments(
-    enrolledClasses,
-    userId,
-    session?.user
-  );
+  const { data: upcomingAssessments = [] } = useUpcomingAssessments(userId);
 
   // Mutations
   const updateProfile = useUpdateProfile();

@@ -46,60 +46,35 @@ export function useProfile() {
 }
 
 // Upcoming Assessments
-export function useUpcomingAssessments(
-  enrolledClasses: any[],
-  userId: string | undefined,
-  sessionUser: any
-) {
+export function useUpcomingAssessments(userId: string | undefined) {
   return useQuery({
-    queryKey: ['upcomingAssessments', enrolledClasses, sessionUser],
+    queryKey: ['upcomingAssessments', userId],
     queryFn: async () => {
-      if (enrolledClasses.length === 0) return [];
-      const now = new Date();
-      const weekFromNow = new Date();
-      weekFromNow.setDate(now.getDate() + 7);
-      const allUpcoming: any[] = [];
-      for (const c of enrolledClasses) {
-        const lessonsRes = await api.get(`/classes/${(c as any).id}/lessons`);
-        const lessons = lessonsRes.status === 200 ? lessonsRes.data : [];
-        for (const lesson of lessons) {
-          const assessmentsRes = await api.get(
-            `/lessons/${lesson.id}/assessments`
-          );
-          const assessments =
-            assessmentsRes.status === 200 ? assessmentsRes.data : [];
-          for (const a of assessments) {
-            const due = new Date(a.deadline);
-            const submitted =
-              Array.isArray(a.submissions) &&
-              a.submissions.some((s: any) => s.studentId === userId);
-            if (!submitted && due >= now && due <= weekFromNow) {
-              allUpcoming.push({
-                assessmentTitle: a.title,
-                due: due,
-                className: (c as any).title,
-                lessonName: lesson.name,
-              });
-            }
-          }
-        }
-      }
-      allUpcoming.sort((a, b) => a.due.getTime() - b.due.getTime());
-      return allUpcoming;
+      if (!userId) return [];
+      const res = await api.get(`/students/${userId}/upcoming-assessments`);
+      return res.status === 200 ? res.data : [];
     },
-    enabled: !!(enrolledClasses as any[]).length && !!userId,
+    enabled: !!userId,
   });
 }
+
+// Type for profile update
+export type ProfileUpdate = {
+  name?: string;
+  phone?: string;
+  address?: string;
+  about?: string;
+};
 
 // Mutations
 export function useUpdateProfile() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: any) => api.patch('/users/me', data),
+    mutationFn: (data: ProfileUpdate) => api.patch('/users/me', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['profile'] });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       console.error('Profile update failed:', error);
       alert('Failed to update profile. Please try again.');
     },
@@ -118,7 +93,7 @@ export function useUploadProfileImage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['profile'] });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       console.error('Profile image upload failed:', error);
       alert('Failed to upload profile image. Please try again.');
     },
