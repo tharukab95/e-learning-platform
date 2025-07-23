@@ -34,6 +34,10 @@ export class UserController {
   @Post('me/image')
   @UseInterceptors(FileInterceptor('image'))
   async uploadImage(@Req() req: any, @UploadedFile() file: any) {
+    if (!file) {
+      throw new Error('No file uploaded');
+    }
+
     // For demo: store image as base64 string (in production, use S3 or similar)
     const image = `data:${file.mimetype};base64,${file.buffer.toString(
       'base64'

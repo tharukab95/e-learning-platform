@@ -99,15 +99,28 @@ export function useUpdateProfile() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['profile'] });
     },
+    onError: (error: any) => {
+      console.error('Profile update failed:', error);
+      alert('Failed to update profile. Please try again.');
+    },
   });
 }
 
 export function useUploadProfileImage() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (formData: FormData) => api.post('/users/me/image', formData),
+    mutationFn: (formData: FormData) =>
+      api.post('/users/me/image', formData, {
+        headers: {
+          'Content-Type': undefined, // Let browser set multipart/form-data
+        },
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['profile'] });
+    },
+    onError: (error: any) => {
+      console.error('Profile image upload failed:', error);
+      alert('Failed to upload profile image. Please try again.');
     },
   });
 }

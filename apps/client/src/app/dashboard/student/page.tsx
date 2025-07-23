@@ -86,7 +86,11 @@ export default function StudentDashboard() {
   };
 
   const handleProfileSave = async () => {
-    updateProfile.mutate(profileForm);
+    updateProfile.mutate(profileForm, {
+      onSuccess: () => {
+        setEditingProfile(false);
+      },
+    });
   };
 
   const handleProfileImageChange = async (
@@ -94,6 +98,19 @@ export default function StudentDashboard() {
   ) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Image size must be less than 5MB');
+      return;
+    }
+
     const formData = new FormData();
     formData.append('image', file);
     uploadProfileImage.mutate(formData);
@@ -191,6 +208,7 @@ export default function StudentDashboard() {
             profileForm={profileForm}
             editingProfile={editingProfile}
             loadingProfile={loadingProfile}
+            savingProfile={updateProfile.isPending}
             handleProfileEdit={handleProfileEdit}
             handleProfileCancel={handleProfileCancel}
             handleProfileChange={handleProfileChange}

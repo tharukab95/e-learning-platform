@@ -44,31 +44,36 @@ export class LessonService {
   ) {
     let pdfUrl: string | undefined = undefined;
     if (data.file) {
-      const s3 = new S3Client({
-        region: process.env.AWS_REGION,
-        credentials: {
-          accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-          secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
-        },
-      });
-      const key = `lesson-pdfs/${randomUUID()}-${data.file.originalname}`;
-      await s3.send(
-        new PutObjectCommand({
-          Bucket: process.env.AWS_S3_BUCKET_NAME!,
-          Key: key,
-          Body: data.file.buffer,
-          ContentType: data.file.mimetype,
-        })
-      );
-      pdfUrl = `https://${process.env.AWS_S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+      try {
+        const s3 = new S3Client({
+          region: process.env.AWS_REGION,
+          credentials: {
+            accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+          },
+        });
+        const key = `lesson-pdfs/${randomUUID()}-${data.file.originalname}`;
+        await s3.send(
+          new PutObjectCommand({
+            Bucket: process.env.AWS_S3_BUCKET_NAME!,
+            Key: key,
+            Body: data.file.buffer,
+            ContentType: data.file.mimetype,
+          })
+        );
+        pdfUrl = `https://${process.env.AWS_S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+      } catch (error: any) {
+        throw new Error(`Failed to upload file to S3: ${error.message}`);
+      }
     }
+    const updateData = {
+      name: data.name,
+      description: data.description,
+      ...(pdfUrl ? { pdfUrl } : {}),
+    };
     return this.prisma.lesson.update({
       where: { id },
-      data: {
-        name: data.name,
-        description: data.description,
-        ...(pdfUrl ? { pdfUrl } : {}),
-      },
+      data: updateData,
     });
   }
 

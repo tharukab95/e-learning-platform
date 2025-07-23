@@ -8,6 +8,7 @@ interface StudentProfileProps {
   profileForm: Partial<User>;
   editingProfile: boolean;
   loadingProfile: boolean;
+  savingProfile: boolean;
   handleProfileEdit: () => void;
   handleProfileCancel: () => void;
   handleProfileChange: (
@@ -24,6 +25,7 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
   profileForm,
   editingProfile,
   loadingProfile,
+  savingProfile,
   handleProfileEdit,
   handleProfileCancel,
   handleProfileChange,
@@ -189,16 +191,24 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
               {/* Add spacing before the buttons and align with theme */}
               <div className="flex gap-3 justify-end mt-8">
                 <button
-                  className="btn btn-outline border-gray-300 text-gray-700 hover:bg-gray-100 hover:border-gray-400 rounded-full px-6 py-2 transition"
+                  className={`btn btn-outline border-gray-300 text-gray-700 hover:bg-gray-100 hover:border-gray-400 rounded-full px-6 py-2 transition ${
+                    savingProfile ? 'opacity-50 cursor-not-allowed' : ''
+                  }`}
                   onClick={handleProfileCancel}
+                  disabled={savingProfile}
                 >
                   Cancel
                 </button>
                 <button
-                  className="btn bg-gradient-to-r from-blue-600 to-indigo-700 text-white font-semibold rounded-full px-8 py-2 shadow hover:from-blue-700 hover:to-indigo-800 transition"
+                  className={`btn rounded-full px-8 py-2 shadow transition ${
+                    savingProfile
+                      ? 'bg-gray-400 text-white cursor-not-allowed'
+                      : 'bg-gradient-to-r from-blue-600 to-indigo-700 text-white font-semibold hover:from-blue-700 hover:to-indigo-800'
+                  }`}
                   onClick={handleProfileSave}
+                  disabled={savingProfile}
                 >
-                  Save
+                  {savingProfile ? 'Saving...' : 'Save'}
                 </button>
               </div>
             </div>

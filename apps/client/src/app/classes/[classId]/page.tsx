@@ -232,12 +232,24 @@ export default function ClassDetailsPage() {
   // Handle lesson creation
   const handleCreateLesson = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validation
+    if (!form.name.trim()) {
+      setError('Lesson name is required');
+      return;
+    }
+
+    if (!form.description.trim()) {
+      setError('Lesson description is required');
+      return;
+    }
+
     setIsSubmitting(true);
     setError('');
     try {
       const formData = new FormData();
-      formData.append('name', form.name);
-      formData.append('description', form.description);
+      formData.append('name', form.name.trim());
+      formData.append('description', form.description.trim());
       formData.append('classId', classId);
       if (form.file) formData.append('pdf', form.file);
       const res = await fetch(
@@ -839,29 +851,45 @@ export default function ClassDetailsPage() {
             <form onSubmit={handleCreateLesson} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-1">
-                  Lesson Name
+                  Lesson Name <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   name="name"
                   value={form.name}
                   onChange={handleInputChange}
-                  className="input input-bordered w-full bg-gray-50 border-2 border-gray-300 focus:border-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary px-3 py-2"
+                  className={`input input-bordered w-full bg-gray-50 border-2 focus:border-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary px-3 py-2 ${
+                    error && !form.name.trim()
+                      ? 'border-red-300'
+                      : 'border-gray-300'
+                  }`}
+                  placeholder="Enter lesson name"
                   required
                 />
+                {error && !form.name.trim() && (
+                  <p className="text-red-500 text-xs mt-1">{error}</p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">
-                  Description
+                  Description <span className="text-red-500">*</span>
                 </label>
                 <textarea
                   name="description"
                   value={form.description}
                   onChange={handleInputChange}
-                  className="textarea textarea-bordered w-full bg-gray-50 border-2 border-gray-300 focus:border-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary px-3 py-2"
+                  className={`textarea textarea-bordered w-full bg-gray-50 border-2 focus:border-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary px-3 py-2 ${
+                    error && !form.description.trim()
+                      ? 'border-red-300'
+                      : 'border-gray-300'
+                  }`}
                   rows={3}
+                  placeholder="Enter lesson description"
                   required
                 />
+                {error && !form.description.trim() && (
+                  <p className="text-red-500 text-xs mt-1">{error}</p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">
@@ -889,8 +917,16 @@ export default function ClassDetailsPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2 rounded-full border border-primary text-primary shadow-sm hover:bg-primary hover:text-white focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all bg-white"
-                  disabled={isSubmitting}
+                  className={`px-6 py-2 rounded-full border transition-all ${
+                    form.name.trim() && form.description.trim() && !isSubmitting
+                      ? 'border-primary text-primary shadow-sm hover:bg-primary hover:text-white focus:outline-none focus:ring-2 focus:ring-primary/20 bg-white'
+                      : 'border-gray-300 text-gray-400 bg-gray-100 cursor-not-allowed'
+                  }`}
+                  disabled={
+                    !form.name.trim() ||
+                    !form.description.trim() ||
+                    isSubmitting
+                  }
                 >
                   {isSubmitting ? 'Creating...' : 'Create Lesson'}
                 </button>

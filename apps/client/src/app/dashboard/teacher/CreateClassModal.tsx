@@ -26,15 +26,42 @@ const CreateClassModal: React.FC<CreateClassModalProps> = ({
     handleSubmit,
     formState: { errors },
     reset,
+    watch,
   } = useForm<CreateClassFormValues>();
   const [preview, setPreview] = useState<string | null>(null);
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
+  const [thumbnailError, setThumbnailError] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Watch form values for validation
+  const watchedTitle = watch('title');
+  const watchedSubject = watch('subject');
+
+  // Check if all required fields are filled
+  const isFormValid = watchedTitle && watchedSubject && thumbnailFile;
 
   const onThumbnailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
     setThumbnailFile(file);
+    setThumbnailError(''); // Clear error when user selects a file
+
     if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        setThumbnailError('Please select a valid image file');
+        setThumbnailFile(null);
+        setPreview(null);
+        return;
+      }
+
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        setThumbnailError('File size must be less than 5MB');
+        setThumbnailFile(null);
+        setPreview(null);
+        return;
+      }
+
       const reader = new FileReader();
       reader.onloadend = () => setPreview(reader.result as string);
       reader.readAsDataURL(file);
@@ -44,17 +71,23 @@ const CreateClassModal: React.FC<CreateClassModalProps> = ({
   };
 
   const handleFormSubmit = async (data: CreateClassFormValues) => {
+    // Additional validation before submission
+    if (!thumbnailFile) {
+      setThumbnailError('Thumbnail is required');
+      return;
+    }
+
     const formData = new FormData();
     formData.append('title', data.title);
     formData.append('subject', data.subject);
     formData.append('description', data.description || '');
-    if (thumbnailFile) {
-      formData.append('thumbnail', thumbnailFile);
-    }
+    formData.append('thumbnail', thumbnailFile);
+
     await onSubmit(formData);
     reset();
     setPreview(null);
     setThumbnailFile(null);
+    setThumbnailError('');
   };
 
   if (!open) return null;
@@ -76,12 +109,13 @@ const CreateClassModal: React.FC<CreateClassModalProps> = ({
             <div className="flex-1 space-y-4">
               <div>
                 <label htmlFor="title" className="block text-sm font-medium">
-                  Title
+                  Title <span className="text-red-500">*</span>
                 </label>
                 <input
                   id="title"
                   {...register('title', { required: 'Title is required' })}
                   className="input input-bordered w-full mt-1 border-2 border-gray-300 bg-gray-50 focus:border-primary focus:bg-white focus:outline-none px-3 py-2"
+                  placeholder="Enter class title"
                 />
                 {errors.title && (
                   <p className="text-red-500 text-xs mt-1">
@@ -91,12 +125,13 @@ const CreateClassModal: React.FC<CreateClassModalProps> = ({
               </div>
               <div>
                 <label htmlFor="subject" className="block text-sm font-medium">
-                  Subject
+                  Subject <span className="text-red-500">*</span>
                 </label>
                 <input
                   id="subject"
                   {...register('subject', { required: 'Subject is required' })}
                   className="input input-bordered w-full mt-1 border-2 border-gray-300 bg-gray-50 focus:border-primary focus:bg-white focus:outline-none px-3 py-2"
+                  placeholder="Enter subject name"
                 />
                 {errors.subject && (
                   <p className="text-red-500 text-xs mt-1">
@@ -116,15 +151,18 @@ const CreateClassModal: React.FC<CreateClassModalProps> = ({
                   {...register('description')}
                   className="textarea textarea-bordered w-full mt-1 border-2 border-gray-300 bg-gray-50 focus:border-primary focus:bg-white focus:outline-none px-3 py-2"
                   rows={4}
+                  placeholder="Enter class description (optional)"
                 />
               </div>
             </div>
             <div className="flex flex-col items-center gap-2">
               <label className="block text-sm font-medium mb-1">
-                Thumbnail
+                Thumbnail <span className="text-red-500">*</span>
               </label>
               <div
-                className="w-28 h-48 bg-base-300 rounded-lg flex items-center justify-center cursor-pointer border border-dashed border-gray-300 hover:border-primary relative aspect-[9/16]"
+                className={`w-28 h-48 bg-base-300 rounded-lg flex items-center justify-center cursor-pointer border border-dashed ${
+                  thumbnailError ? 'border-red-300' : 'border-gray-300'
+                } hover:border-primary relative aspect-[9/16]`}
                 onClick={() => !preview && fileInputRef.current?.click()}
               >
                 {preview ? (
@@ -141,6 +179,7 @@ const CreateClassModal: React.FC<CreateClassModalProps> = ({
                         e.stopPropagation();
                         setPreview(null);
                         setThumbnailFile(null);
+                        setThumbnailError('');
                         if (fileInputRef.current)
                           fileInputRef.current.value = '';
                       }}
@@ -162,9 +201,16 @@ const CreateClassModal: React.FC<CreateClassModalProps> = ({
                     </button>
                   </>
                 ) : (
-                  <span className="text-gray-400">Click to upload</span>
+                  <span className="text-gray-400 text-center text-sm">
+                    Click to upload
+                  </span>
                 )}
               </div>
+              {thumbnailError && (
+                <p className="text-red-500 text-xs text-center max-w-28">
+                  {thumbnailError}
+                </p>
+              )}
               <input
                 type="file"
                 accept="image/*"
@@ -185,8 +231,12 @@ const CreateClassModal: React.FC<CreateClassModalProps> = ({
             </button>
             <button
               type="submit"
-              className="px-6 py-2 rounded-full border border-primary text-primary shadow-sm hover:bg-primary hover:text-white focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all bg-white"
-              disabled={isPending}
+              className={`px-6 py-2 rounded-full border transition-all ${
+                isFormValid && !isPending
+                  ? 'border-primary text-primary shadow-sm hover:bg-primary hover:text-white focus:outline-none focus:ring-2 focus:ring-primary/20 bg-white'
+                  : 'border-gray-300 text-gray-400 bg-gray-100 cursor-not-allowed'
+              }`}
+              disabled={!isFormValid || isPending}
             >
               {isPending ? 'Creating...' : 'Create Class'}
             </button>

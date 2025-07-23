@@ -50,6 +50,7 @@ export default function LessonPlanPage() {
     null
   );
   const [editFields, setEditFields] = useState({ name: '', description: '' });
+  const [contentFile, setContentFile] = useState<File | null>(null);
   const [showAssessmentModal, setShowAssessmentModal] = useState<string | null>(
     null
   ); // lessonId or null
@@ -74,7 +75,10 @@ export default function LessonPlanPage() {
     setLoading(true);
     api
       .get(`/classes/${classId}/lessons`)
-      .then((res) => setLessons(Array.isArray(res.data) ? res.data : []))
+      .then((res) => {
+        const lessonsData = Array.isArray(res.data) ? res.data : [];
+        setLessons(lessonsData);
+      })
       .catch(() => setLessons([]))
       .finally(() => setLoading(false));
   }, [classId, showModal, refresh]);
@@ -110,6 +114,7 @@ export default function LessonPlanPage() {
         name: contentModalLesson.name || '',
         description: contentModalLesson.description || '',
       });
+      setContentFile(null); // Reset file when opening modal
     }
   }, [contentModalLesson]);
 
@@ -174,12 +179,24 @@ export default function LessonPlanPage() {
 
   const handleCreateLesson = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validation
+    if (!form.name.trim()) {
+      setError('Lesson name is required');
+      return;
+    }
+
+    if (!form.description.trim()) {
+      setError('Lesson description is required');
+      return;
+    }
+
     setIsSubmitting(true);
     setError('');
     try {
       const formData = new FormData();
-      formData.append('name', form.name);
-      formData.append('description', form.description);
+      formData.append('name', form.name.trim());
+      formData.append('description', form.description.trim());
       formData.append('classId', classId);
       const res = await api.post('/lessons', formData);
       if (res.status !== 201) throw new Error('Failed to create lesson');
@@ -194,25 +211,27 @@ export default function LessonPlanPage() {
   };
 
   // Upload content mutation
-  const uploadContent = async (data: any) => {
+  const uploadContent = async () => {
     if (!contentModalLesson) return;
     const formData = new FormData();
     formData.append('name', editFields.name);
     formData.append('description', editFields.description);
-    if (data.pdf && data.pdf[0]) formData.append('pdf', data.pdf[0]);
+    if (contentFile) {
+      formData.append('pdf', contentFile);
+    }
     // PATCH /lessons/:id to update lesson content
-    return api.patch(`/lessons/${contentModalLesson.id}`, formData);
+    return api.patch(`/lessons/${contentModalLesson.id}`, formData, {
+      headers: {
+        // Remove Content-Type to let browser set it automatically for FormData
+        'Content-Type': undefined,
+      },
+    });
   };
-  const {
-    register: contentRegister,
-    handleSubmit: handleContentSubmit,
-    reset: resetContentForm,
-  } = useForm();
   const contentMutation = useMutation({
     mutationFn: uploadContent,
     onSuccess: () => {
       setContentModalLesson(null);
-      resetContentForm();
+      setContentFile(null);
       setRefresh((v) => v + 1);
     },
   });
@@ -465,29 +484,45 @@ export default function LessonPlanPage() {
             <form onSubmit={handleCreateLesson} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-1">
-                  Lesson Name
+                  Lesson Name <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   name="name"
                   value={form.name}
                   onChange={handleInputChange}
-                  className="input input-bordered w-full bg-gray-50 border-2 border-gray-300 focus:border-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary px-3 py-2"
+                  className={`input input-bordered w-full bg-gray-50 border-2 focus:border-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary px-3 py-2 ${
+                    error && !form.name.trim()
+                      ? 'border-red-300'
+                      : 'border-gray-300'
+                  }`}
+                  placeholder="Enter lesson name"
                   required
                 />
+                {error && !form.name.trim() && (
+                  <p className="text-red-500 text-xs mt-1">{error}</p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">
-                  Description
+                  Description <span className="text-red-500">*</span>
                 </label>
                 <textarea
                   name="description"
                   value={form.description}
                   onChange={handleInputChange}
-                  className="textarea textarea-bordered w-full bg-gray-50 border-2 border-gray-300 focus:border-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary px-3 py-2"
+                  className={`textarea textarea-bordered w-full bg-gray-50 border-2 focus:border-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary px-3 py-2 ${
+                    error && !form.description.trim()
+                      ? 'border-red-300'
+                      : 'border-gray-300'
+                  }`}
                   rows={3}
+                  placeholder="Enter lesson description"
                   required
                 />
+                {error && !form.description.trim() && (
+                  <p className="text-red-500 text-xs mt-1">{error}</p>
+                )}
               </div>
               {error && <div className="text-red-500 text-sm">{error}</div>}
               <div className="flex justify-end gap-2">
@@ -501,8 +536,16 @@ export default function LessonPlanPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2 rounded-full border border-primary text-primary shadow-sm hover:bg-primary hover:text-white focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all bg-white"
-                  disabled={isSubmitting}
+                  className={`px-6 py-2 rounded-full border transition-all ${
+                    form.name.trim() && form.description.trim() && !isSubmitting
+                      ? 'border-primary text-primary shadow-sm hover:bg-primary hover:text-white focus:outline-none focus:ring-2 focus:ring-primary/20 bg-white'
+                      : 'border-gray-300 text-gray-400 bg-gray-100 cursor-not-allowed'
+                  }`}
+                  disabled={
+                    !form.name.trim() ||
+                    !form.description.trim() ||
+                    isSubmitting
+                  }
                 >
                   {isSubmitting ? 'Adding...' : 'Add Lesson'}
                 </button>
@@ -519,7 +562,7 @@ export default function LessonPlanPage() {
               className="absolute top-2 right-2 text-gray-500 hover:text-gray-800"
               onClick={() => {
                 setContentModalLesson(null);
-                resetContentForm();
+                setContentFile(null);
               }}
             >
               &times;
@@ -531,9 +574,10 @@ export default function LessonPlanPage() {
                 : 'Add Content'}
             </h2>
             <form
-              onSubmit={handleContentSubmit((data) =>
-                contentMutation.mutate(data)
-              )}
+              onSubmit={(e) => {
+                e.preventDefault();
+                contentMutation.mutate();
+              }}
               className="space-y-4"
             >
               <div>
@@ -574,7 +618,7 @@ export default function LessonPlanPage() {
                 <input
                   type="file"
                   accept="application/pdf"
-                  {...contentRegister('pdf')}
+                  onChange={(e) => setContentFile(e.target.files?.[0] || null)}
                   className="file-input file-input-bordered w-full"
                 />
               </div>
@@ -584,7 +628,7 @@ export default function LessonPlanPage() {
                   className="px-6 py-2 rounded-full border border-gray-300 text-gray-500 shadow-sm hover:border-primary hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all bg-white"
                   onClick={() => {
                     setContentModalLesson(null);
-                    resetContentForm();
+                    setContentFile(null);
                   }}
                   disabled={contentMutation.isPending}
                 >
@@ -622,15 +666,41 @@ export default function LessonPlanPage() {
             <form
               onSubmit={async (e) => {
                 e.preventDefault();
+
+                // Validation
+                if (!assessmentForm.title.trim()) {
+                  setAssessmentError('Assessment name is required');
+                  return;
+                }
+
+                if (!assessmentForm.deadline) {
+                  setAssessmentError('Deadline is required');
+                  return;
+                }
+
+                // Check if deadline is in the past
+                const selectedDate = new Date(assessmentForm.deadline);
+                const today = new Date();
+                today.setHours(0, 0, 0, 0); // Reset time to start of day
+
+                if (selectedDate < today) {
+                  setAssessmentError('Deadline cannot be a past date');
+                  return;
+                }
+
+                if (!assessmentForm.file) {
+                  setAssessmentError('Assessment PDF is required');
+                  return;
+                }
+
                 setIsAssessmentSubmitting(true);
                 setAssessmentError('');
                 try {
                   const formData = new FormData();
-                  formData.append('title', assessmentForm.title);
+                  formData.append('title', assessmentForm.title.trim());
                   formData.append('deadline', assessmentForm.deadline);
                   formData.append('lessonId', showAssessmentModal);
-                  if (assessmentForm.file)
-                    formData.append('pdf', assessmentForm.file);
+                  formData.append('pdf', assessmentForm.file);
                   const res = await api.post('/assessments', formData);
                   if (res.status !== 201)
                     throw new Error('Failed to create assessment');
@@ -649,7 +719,7 @@ export default function LessonPlanPage() {
             >
               <div>
                 <label className="block text-sm font-medium mb-1">
-                  Assessment Name
+                  Assessment Name <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -658,13 +728,21 @@ export default function LessonPlanPage() {
                   onChange={(e) =>
                     setAssessmentForm((f) => ({ ...f, title: e.target.value }))
                   }
-                  className="input input-bordered w-full bg-gray-50 border-2 border-gray-300 focus:border-primary focus:bg-white focus:outline-none px-3 py-2"
+                  className={`input input-bordered w-full bg-gray-50 border-2 focus:border-primary focus:bg-white focus:outline-none px-3 py-2 ${
+                    assessmentError && !assessmentForm.title.trim()
+                      ? 'border-red-300'
+                      : 'border-gray-300'
+                  }`}
+                  placeholder="Enter assessment name"
                   required
                 />
+                {assessmentError && !assessmentForm.title.trim() && (
+                  <p className="text-red-500 text-xs mt-1">{assessmentError}</p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">
-                  Deadline
+                  Deadline <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="date"
@@ -676,13 +754,21 @@ export default function LessonPlanPage() {
                       deadline: e.target.value,
                     }))
                   }
-                  className="input input-bordered w-full bg-gray-50 border-2 border-gray-300 focus:border-primary focus:bg-white focus:outline-none px-3 py-2"
+                  min={new Date().toISOString().split('T')[0]}
+                  className={`input input-bordered w-full bg-gray-50 border-2 focus:border-primary focus:bg-white focus:outline-none px-3 py-2 ${
+                    assessmentError && !assessmentForm.deadline
+                      ? 'border-red-300'
+                      : 'border-gray-300'
+                  }`}
                   required
                 />
+                {assessmentError && !assessmentForm.deadline && (
+                  <p className="text-red-500 text-xs mt-1">{assessmentError}</p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">
-                  Assessment PDF
+                  Assessment PDF <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="file"
@@ -695,9 +781,16 @@ export default function LessonPlanPage() {
                       file: e.target.files?.[0] || null,
                     }))
                   }
-                  className="file-input file-input-bordered w-full bg-gray-50 border-2 border-gray-300 focus:border-primary focus:bg-white focus:outline-none px-3 py-2"
+                  className={`file-input file-input-bordered w-full bg-gray-50 border-2 focus:border-primary focus:bg-white focus:outline-none px-3 py-2 ${
+                    assessmentError && !assessmentForm.file
+                      ? 'border-red-300'
+                      : 'border-gray-300'
+                  }`}
                   required
                 />
+                {assessmentError && !assessmentForm.file && (
+                  <p className="text-red-500 text-xs mt-1">{assessmentError}</p>
+                )}
               </div>
               {assessmentError && (
                 <div className="text-red-500 text-sm">{assessmentError}</div>
@@ -713,8 +806,20 @@ export default function LessonPlanPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2 rounded-full border border-primary text-primary shadow-sm hover:bg-primary hover:text-white focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all bg-white"
-                  disabled={isAssessmentSubmitting}
+                  className={`px-6 py-2 rounded-full border transition-all ${
+                    assessmentForm.title.trim() &&
+                    assessmentForm.deadline &&
+                    assessmentForm.file &&
+                    !isAssessmentSubmitting
+                      ? 'border-primary text-primary shadow-sm hover:bg-primary hover:text-white focus:outline-none focus:ring-2 focus:ring-primary/20 bg-white'
+                      : 'border-gray-300 text-gray-400 bg-gray-100 cursor-not-allowed'
+                  }`}
+                  disabled={
+                    !assessmentForm.title.trim() ||
+                    !assessmentForm.deadline ||
+                    !assessmentForm.file ||
+                    isAssessmentSubmitting
+                  }
                 >
                   {isAssessmentSubmitting ? 'Creating...' : 'Create Assessment'}
                 </button>
