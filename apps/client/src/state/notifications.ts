@@ -1,8 +1,9 @@
-import { create } from "zustand";
+import { create } from 'zustand';
 
 interface Notification {
   id: string;
   classId: string;
+  lessonId?: string;
   videoId?: string;
   assessmentId?: string;
   timestamp: string;

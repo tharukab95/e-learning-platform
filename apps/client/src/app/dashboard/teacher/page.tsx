@@ -21,6 +21,7 @@ import {
 } from './teacherDashboardQueries';
 import TeacherAssessmentModal from './TeacherAssessmentModal';
 import { Lesson } from '@/types/models';
+import { useNotificationsStore } from '@/state/notifications';
 
 export default function TeacherDashboard() {
   const { data: session } = useSession();
@@ -42,6 +43,9 @@ export default function TeacherDashboard() {
   const [isAssessmentSubmitting, setIsAssessmentSubmitting] = useState(false);
   const [assessmentError, setAssessmentError] = useState('');
   const assessmentFileInputRef = useRef<HTMLInputElement>(null);
+
+  const notifications = useNotificationsStore((s) => s.notifications);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   // Fetch all created classes
   const { data: createdClasses = [] } = useCreatedClasses(session?.user);
@@ -130,7 +134,49 @@ export default function TeacherDashboard() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-white">
       {/* Header NavBar */}
-      <TeacherHeader onSignOut={signOut} />
+      <TeacherHeader
+        notifications={notifications}
+        onShowNotifications={() => setShowNotifications((v) => !v)}
+        showNotifications={showNotifications}
+        onSignOut={signOut}
+      >
+        {/* Notification Dropdown */}
+        {showNotifications && notifications.length > 0 && (
+          <div className="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg z-50 max-h-96 overflow-y-auto border border-gray-200">
+            <div className="p-3 border-b font-bold">Notifications</div>
+            {notifications.length === 0 ? (
+              <div className="p-3 text-gray-500">No notifications</div>
+            ) : (
+              notifications.map((n: any, idx: number) => (
+                <div
+                  key={n.id || idx}
+                  className={`px-4 py-3 hover:bg-gray-50 cursor-pointer ${
+                    !n.isRead ? 'font-semibold' : ''
+                  } rounded-sm${
+                    idx !== notifications.length - 1 ? ' border-b' : ''
+                  }`}
+                  onClick={async () => {
+                    setShowNotifications(false);
+                    // If notification has lessonId and classId, route to lesson page and expand
+                    if (n.lessonId && n.classId) {
+                      router.push(
+                        `/classes/${n.classId}?expandLesson=${n.lessonId}`
+                      );
+                    } else if (n.link) {
+                      router.push(n.link);
+                    }
+                  }}
+                >
+                  {n.message || n.payload?.message}
+                  <div className="text-xs text-gray-400 mt-1">
+                    {new Date(n.timestamp || n.createdAt).toLocaleString()}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+      </TeacherHeader>
       {/* Main Content Card */}
       <main className="max-w-6xl mx-auto mt-10 mb-16 px-4">
         <div className="bg-white/90 rounded-2xl shadow-xl p-8 flex flex-col gap-8">

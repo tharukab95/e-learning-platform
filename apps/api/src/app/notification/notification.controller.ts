@@ -9,11 +9,15 @@ import {
   Param,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationGateway } from './notification.gateway';
 import { Public } from '../auth/public.decorator';
 
 @Controller('notifications')
 export class NotificationController {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notificationGateway: NotificationGateway
+  ) {}
 
   @Get()
   async getNotifications(@Req() req: any) {
@@ -23,20 +27,35 @@ export class NotificationController {
     });
   }
 
-  // Called by backend when a new assessment is created
+  @Public()
+  @Get('test')
+  getTest() {
+    return { ok: true };
+  }
+
+  // Called by backend when a new assessment or video is created
   @Public()
   @Post('create')
   async createNotification(
-    @Body() body: { userId: string; message: string; link?: string }
+    @Body()
+    body: {
+      userId: string;
+      type?: string;
+      payload?: any;
+      message?: string;
+      link?: string;
+    }
   ) {
-    return this.prisma.notification.create({
+    const notification = await this.prisma.notification.create({
       data: {
         userId: body.userId,
-        type: 'assessment',
-        payload: { message: body.message, link: body.link },
+        type: body.type || 'assessment',
+        payload: body.payload || { message: body.message, link: body.link },
         isRead: false,
       },
     });
+    this.notificationGateway.sendNotification(body.userId, notification);
+    return notification;
   }
 
   @Patch(':id/read')

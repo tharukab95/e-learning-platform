@@ -39,6 +39,10 @@ const StudentClassList: React.FC<StudentClassListProps> = ({
       </div>
     );
   }
+  const enrolledIds = new Set(enrolledClasses.map((c) => c.id));
+  const filteredAvailableClasses = availableClasses.filter(
+    (c) => !enrolledIds.has(c.id)
+  );
   const allClassCards = [
     ...enrolledClasses.map((c) => (
       <div
@@ -49,7 +53,7 @@ const StudentClassList: React.FC<StudentClassListProps> = ({
         <ClassCard classInfo={c} enrolled />
       </div>
     )),
-    ...availableClasses.map((c) => (
+    ...filteredAvailableClasses.map((c) => (
       <div
         key={c.id}
         className="rounded-xl border border-gray-200 shadow hover:border-primary transition-all bg-white p-0 flex flex-col justify-between"

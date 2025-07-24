@@ -9,6 +9,7 @@ import { EnrollmentModule } from './enrollment/enrollment.module';
 import { LessonModule } from './lesson/lesson.module';
 import { AssessmentModule } from './assessment/assessment.module';
 import { NotificationModule } from './notification/notification.module';
+import { VideoModule } from './videos/video.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { NotificationModule } from './notification/notification.module';
     LessonModule,
     AssessmentModule,
     NotificationModule,
+    VideoModule,
   ],
   controllers: [AppController],
   providers: [AppService],

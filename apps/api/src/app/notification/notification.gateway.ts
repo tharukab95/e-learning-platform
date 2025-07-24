@@ -3,8 +3,6 @@ import {
   WebSocketServer,
   OnGatewayConnection,
   SubscribeMessage,
-  MessageBody,
-  ConnectedSocket,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 
@@ -24,7 +22,7 @@ export class NotificationGateway implements OnGatewayConnection {
   }
 
   @SubscribeMessage('join')
-  handleJoin(@MessageBody() userId: string, @ConnectedSocket() client: Socket) {
+  handleJoin(client: Socket, userId: string) {
     client.join(userId);
   }
 

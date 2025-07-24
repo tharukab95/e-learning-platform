@@ -1,12 +1,19 @@
 import React from 'react';
+import { FaBell } from 'react-icons/fa';
 
 interface TeacherHeaderProps {
   onSignOut: () => void;
+  notifications: any[];
+  onShowNotifications: () => void;
+  showNotifications: boolean;
   children?: React.ReactNode;
 }
 
 const TeacherHeader: React.FC<TeacherHeaderProps> = ({
   onSignOut,
+  notifications = [],
+  onShowNotifications,
+  showNotifications,
   children,
 }) => (
   <header className="w-full bg-gradient-to-r from-blue-600 to-indigo-700 shadow-md py-4 px-8 flex items-center justify-between">
@@ -19,7 +26,21 @@ const TeacherHeader: React.FC<TeacherHeaderProps> = ({
       </span>
     </div>
     <div className="flex items-center gap-6">
-      {children}
+      <div className="relative">
+        <button
+          className="p-2 rounded-full hover:bg-indigo-600 transition relative"
+          onClick={onShowNotifications}
+          aria-label="Notifications"
+        >
+          <FaBell className="w-6 h-6 text-white" />
+          {notifications.filter((n) => !n.isRead).length > 0 && (
+            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5">
+              {notifications.filter((n) => !n.isRead).length}
+            </span>
+          )}
+        </button>
+        {children}
+      </div>
       <button
         className="ml-2 flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-full transition font-medium"
         onClick={onSignOut}

@@ -2,12 +2,14 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useParams, useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import Skeleton from 'react-loading-skeleton';
 import 'react-loading-skeleton/dist/skeleton.css';
 import { FaChevronDown, FaChevronRight, FaEdit, FaPlus } from 'react-icons/fa';
-import { useForm } from 'react-hook-form';
 import { useMutation } from '@tanstack/react-query';
 import api from '@/lib/api';
+import VideoPlayer from '@/components/VideoPlayer';
+import { AxiosProgressEvent } from 'axios';
 
 interface Lesson {
   id: string;
@@ -69,6 +71,17 @@ export default function LessonPlanPage() {
   >({});
   const [gradingError, setGradingError] = useState('');
   const [isGrading, setIsGrading] = useState(false);
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [videoUploadProgress, setVideoUploadProgress] = useState<number>(0);
+  const [videoUploadError, setVideoUploadError] = useState<string>('');
+
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    const expandLesson = searchParams.get('expandLesson');
+    if (expandLesson) {
+      setExpandedLesson(expandLesson);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (!classId) return;
@@ -303,8 +316,10 @@ export default function LessonPlanPage() {
           ) : (
             <div className="space-y-6">
               {lessons.map((lesson) => {
-                const hasContent =
-                  lesson.pdfUrl || (lesson.videos && lesson.videos.length);
+                const hasVideo =
+                  lessonDetails[lesson.id]?.videos?.length > 0 &&
+                  lessonDetails[lesson.id].videos[0].hlsPath;
+                const hasContent = lesson.pdfUrl || hasVideo;
                 const isExpanded = expandedLesson === lesson.id;
                 return (
                   <div
@@ -357,13 +372,31 @@ export default function LessonPlanPage() {
                     </div>
                     {hasContent && isExpanded && (
                       <div className="mt-4 border-t pt-4">
-                        {lesson.pdfUrl && (
+                        {/* Show video player at the top if video exists, otherwise show PDF at the top */}
+                        {lessonDetails[lesson.id]?.videos?.length > 0 &&
+                        lessonDetails[lesson.id].videos[0].hlsPath ? (
+                          <>
+                            <div className="mb-6">
+                              <VideoPlayer
+                                src={lessonDetails[lesson.id].videos[0].hlsPath}
+                                videoId={lessonDetails[lesson.id].videos[0].id}
+                              />
+                            </div>
+                            {lesson.pdfUrl && (
+                              <iframe
+                                src={lesson.pdfUrl}
+                                title="Lesson PDF"
+                                className="w-full h-96 rounded border mb-4"
+                              />
+                            )}
+                          </>
+                        ) : lesson.pdfUrl ? (
                           <iframe
                             src={lesson.pdfUrl}
                             title="Lesson PDF"
                             className="w-full h-96 rounded border mb-4"
                           />
-                        )}
+                        ) : null}
                         {/* Assessments under lesson */}
                         <div className="mt-4 flex items-center justify-between mb-2">
                           <h3 className="font-semibold mb-1 text-indigo-700">
@@ -574,9 +607,38 @@ export default function LessonPlanPage() {
                 : 'Add Content'}
             </h2>
             <form
-              onSubmit={(e) => {
+              onSubmit={async (e) => {
                 e.preventDefault();
-                contentMutation.mutate();
+                await contentMutation.mutateAsync();
+                // After lesson content is saved, upload video if selected
+                if (videoFile && contentModalLesson) {
+                  setVideoUploadProgress(0);
+                  setVideoUploadError('');
+                  try {
+                    const formData = new FormData();
+                    formData.append('title', editFields.name);
+                    formData.append('lessonId', contentModalLesson.id);
+                    formData.append('video', videoFile);
+                    await api.post('/videos', formData, {
+                      headers: { 'Content-Type': 'multipart/form-data' },
+                      onUploadProgress: (progressEvent: AxiosProgressEvent) => {
+                        if (progressEvent.total) {
+                          setVideoUploadProgress(
+                            Math.round(
+                              (progressEvent.loaded! * 100) /
+                                progressEvent.total
+                            )
+                          );
+                        }
+                      },
+                    });
+                    setVideoFile(null);
+                    setVideoUploadProgress(100);
+                    setRefresh((v) => v + 1);
+                  } catch (err: any) {
+                    setVideoUploadError(err?.message || 'Video upload failed');
+                  }
+                }
               }}
               className="space-y-4"
             >
@@ -621,6 +683,56 @@ export default function LessonPlanPage() {
                   onChange={(e) => setContentFile(e.target.files?.[0] || null)}
                   className="file-input file-input-bordered w-full"
                 />
+              </div>
+              {/* Video uploader below PDF */}
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Video Upload (optional)
+                </label>
+                <div
+                  className={`border-2 border-dashed rounded p-4 text-center cursor-pointer ${
+                    videoFile ? 'border-primary' : 'border-gray-300'
+                  } bg-gray-50 hover:bg-gray-100`}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                      setVideoFile(e.dataTransfer.files[0]);
+                    }
+                  }}
+                  onClick={() =>
+                    document.getElementById('video-upload-input')?.click()
+                  }
+                >
+                  {videoFile ? (
+                    <span>{videoFile.name}</span>
+                  ) : (
+                    <span>
+                      Drag & drop a video file here, or click to select
+                    </span>
+                  )}
+                  <input
+                    id="video-upload-input"
+                    type="file"
+                    accept="video/*"
+                    style={{ display: 'none' }}
+                    onChange={(e) => setVideoFile(e.target.files?.[0] || null)}
+                  />
+                </div>
+                {videoUploadProgress > 0 && videoUploadProgress < 100 && (
+                  <div className="mt-2 text-sm text-blue-600">
+                    Uploading: {videoUploadProgress}%
+                  </div>
+                )}
+                {videoUploadError && (
+                  <div className="mt-2 text-sm text-red-600">
+                    {videoUploadError}
+                  </div>
+                )}
               </div>
               <div className="flex justify-end gap-2">
                 <button

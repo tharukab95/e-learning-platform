@@ -59,6 +59,14 @@ model Video {
   lesson    Lesson   @relation(fields: [lessonId], references: [id])
   lessonId  String
   progress  Progress[]
+  status    VideoStatus @default(pending)
+}
+
+enum VideoStatus {
+  pending
+  processing
+  ready
+  failed
 }
 
 model Progress {

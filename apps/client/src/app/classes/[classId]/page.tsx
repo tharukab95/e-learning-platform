@@ -9,6 +9,7 @@ import Skeleton from 'react-loading-skeleton';
 import 'react-loading-skeleton/dist/skeleton.css';
 import { useSearchParams } from 'next/navigation';
 import { IoLogOutOutline } from 'react-icons/io5';
+import VideoPlayer from '@/components/VideoPlayer';
 
 interface Lesson {
   id: string;
@@ -504,6 +505,13 @@ export default function ClassDetailsPage() {
     ? Math.round((completedAssessments / totalAssessments) * 100)
     : 0;
 
+  useEffect(() => {
+    const expandLesson = searchParams.get('expandLesson');
+    if (expandLesson) {
+      setExpandedLesson(expandLesson);
+    }
+  }, [searchParams]);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-white">
       {/* Header NavBar */}
@@ -597,9 +605,14 @@ export default function ClassDetailsPage() {
                   >
                     <div
                       className="flex items-center justify-between gap-2 cursor-pointer"
-                      onClick={() =>
-                        setExpandedLesson(isExpanded ? null : lesson.id)
-                      }
+                      onClick={() => {
+                        const hasVideo =
+                          lessonDetails[lesson.id]?.videos?.length > 0 &&
+                          lessonDetails[lesson.id].videos[0].hlsPath;
+                        const hasContent = lesson.pdfUrl || hasVideo;
+                        if (hasContent)
+                          setExpandedLesson(isExpanded ? null : lesson.id);
+                      }}
                     >
                       <div className="flex-1">
                         <h2 className="text-xl font-bold text-indigo-900 mb-1">
@@ -686,11 +699,31 @@ export default function ClassDetailsPage() {
                     </div>
                     {isExpanded && (
                       <div className="mt-4 border-t pt-4">
-                        <iframe
-                          src={lesson.pdfUrl}
-                          title="Lesson PDF"
-                          className="w-full h-96 rounded border"
-                        />
+                        {/* Show video if available, otherwise PDF if available */}
+                        {lessonDetails[lesson.id]?.videos?.length > 0 &&
+                        lessonDetails[lesson.id].videos[0].hlsPath ? (
+                          <>
+                            <div className="mb-6">
+                              <VideoPlayer
+                                src={lessonDetails[lesson.id].videos[0].hlsPath}
+                                videoId={lessonDetails[lesson.id].videos[0].id}
+                              />
+                            </div>
+                            {lesson.pdfUrl ? (
+                              <iframe
+                                src={lesson.pdfUrl}
+                                title="Lesson PDF"
+                                className="w-full h-96 rounded border mb-4"
+                              />
+                            ) : null}
+                          </>
+                        ) : lesson.pdfUrl ? (
+                          <iframe
+                            src={lesson.pdfUrl}
+                            title="Lesson PDF"
+                            className="w-full h-96 rounded border"
+                          />
+                        ) : null}
                         {/* Assessments under lesson */}
                         <div className="mt-4 flex items-center justify-between">
                           <h3 className="font-semibold mb-1 text-indigo-700">

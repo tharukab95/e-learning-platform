@@ -6,7 +6,8 @@
     "dev": "nx run-many --target=serve --parallel --projects=client,api",
     "build": "nx run-many --target=build --parallel --projects=client,api",
     "start:prod": "node dist/apps/api/main.js & serve -s dist/apps/client",
-    "prisma:migrate": "npx prisma migrate dev --schema=apps/api/prisma/schema.prisma --name init"
+    "prisma:migrate": "npx prisma migrate dev --schema=apps/api/prisma/schema.prisma --name init",
+    "start:worker": "npx ts-node apps/api/src/app/videos/video-processor.worker.ts"
   },
   "private": true,
   "dependencies": {
@@ -79,7 +80,7 @@
     "prettier": "^2.6.2",
     "tailwindcss": "3.4.3",
     "ts-jest": "^29.4.0",
-    "ts-node": "10.9.1",
+    "ts-node": "^10.9.2",
     "tslib": "^2.3.0",
     "typescript": "~5.8.2",
     "typescript-eslint": "^8.29.0",
